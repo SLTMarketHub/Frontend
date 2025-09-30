@@ -2,8 +2,8 @@ import React from "react";
 
 const ShippingOptions = ({ shipping, setShipping }) => {
   const options = [
-    { id: "standard", label: "Standard (3-5 days)", cost: 10 },
-    { id: "express", label: "Express (1-2 days)", cost: 25 },
+    { id: "standard", label: "Standard (3-5 days)", cost: 300 },
+    { id: "express", label: "Express (1-2 days)", cost: 600 },
   ];
 
   return (
@@ -18,7 +18,7 @@ const ShippingOptions = ({ shipping, setShipping }) => {
             checked={shipping === opt.id}
             onChange={() => setShipping(opt.id)}
           />
-          {opt.label} - ${opt.cost}
+          {opt.label} - Rs.{opt.cost}
         </label>
       ))}
     </div>
