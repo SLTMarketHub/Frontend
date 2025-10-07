@@ -1,10 +1,36 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
-const CartSummary = ({ cartItems, promoCode, setPromoCode }) => {
+const CartSummary = ({ cartItems, promoCode, setPromoCode, address, shipping, payment }) => {
+  const navigate = useNavigate();
+
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0);
   const discount = promoCode === "SAVE10" ? subtotal * 0.1 : 0;
-  const shipping = subtotal > 200 ? 0 : 15;
-  const total = subtotal - discount + shipping;
+
+  // Dynamic shipping cost
+  const shippingCost =
+    shipping === "standard" ? 300 :
+    shipping === "express" ? 600 : 0;
+
+  const total = subtotal - discount + shippingCost;
+
+  const handleCheckout = () => {
+    if (!address) {
+      alert("⚠️ Please select a delivery address.");
+      return;
+    }
+    if (!shipping) {
+      alert("⚠️ Please select a shipping option.");
+      return;
+    }
+    if (!payment) {
+      alert("⚠️ Please select a payment method.");
+      return;
+    }
+
+    // ✅ Navigate to checkout page with order details
+    navigate("/checkout", { state: { cartItems, address, shipping, payment, total } });
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -22,7 +48,7 @@ const CartSummary = ({ cartItems, promoCode, setPromoCode }) => {
 
       <div className="flex justify-between text-gray-700">
         <span>Shipping</span>
-        <span>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
+        <span>{shippingCost === 0 ? "—" : `Rs.${shippingCost.toFixed(2)}`}</span>
       </div>
 
       <hr className="border-gray-300" />
@@ -40,7 +66,10 @@ const CartSummary = ({ cartItems, promoCode, setPromoCode }) => {
         className="w-full border p-2 rounded-lg mt-2"
       />
 
-      <button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors">
+      <button
+        onClick={handleCheckout}
+        className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors"
+      >
         Proceed to Checkout
       </button>
     </div>
