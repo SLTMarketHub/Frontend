@@ -6,6 +6,7 @@ import {
   Settings,
   HeadphonesIcon,
   Users,
+  UserCheck,
   Package,
   ShoppingCart,
   ChevronLeft,
@@ -30,6 +31,11 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       title: 'Users',
       icon: <Users size={20} />,
       path: '/admin/users',
+    },
+    {
+      title: 'Sellers',
+      icon: <UserCheck size={20} />,
+      path: '/admin/sellers',
     },
     {
       title: 'Products',
@@ -66,14 +72,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           {isOpen && (
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-slt-primary to-slt-secondary rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-slt-gradient rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">SLT</span>
               </div>
               <span className="text-lg font-bold text-gray-900">MarketHub</span>
             </div>
           )}
           {!isOpen && (
-            <div className="w-8 h-8 bg-gradient-to-br from-slt-primary to-slt-secondary rounded-lg flex items-center justify-center mx-auto">
+            <div className="w-8 h-8 bg-slt-gradient rounded-lg flex items-center justify-center mx-auto">
               <span className="text-white font-bold text-sm">SLT</span>
             </div>
           )}

@@ -16,6 +16,8 @@ import { ConfirmModal } from '../../components/common/Modal';
 import { LoadingState } from '../../components/common/LoadingSpinner';
 import BannerFormModal from '../../components/admin/settings/BannerFormModal';
 import TemplateEditorModal from '../../components/admin/settings/TemplateEditorModal';
+import useToast from '../../hooks/useToast';
+
 import {
   mockCommissionRates,
   mockShippingRules,
@@ -28,7 +30,8 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('commission');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+  const { success, error } = useToast();
+
   const [commissionData, setCommissionData] = useState(mockCommissionRates);
   const [shippingData, setShippingData] = useState(mockShippingRules);
   const [taxData, setTaxData] = useState(mockTaxRules);
@@ -37,7 +40,7 @@ const Settings = () => {
   const [editingBanner, setEditingBanner] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingBannerId, setDeletingBannerId] = useState(null);
-  
+
   const [templates, setTemplates] = useState(mockEmailTemplates);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
@@ -54,7 +57,7 @@ const Settings = () => {
     setSaving(true);
     try {
       setTimeout(() => {
-        alert('Commission rates saved successfully!');
+        success('Commission rates saved successfully!');
         setSaving(false);
       }, 1000);
     } catch (error) {
@@ -67,7 +70,7 @@ const Settings = () => {
     setSaving(true);
     try {
       setTimeout(() => {
-        alert('Shipping rules saved successfully!');
+        success('Shipping rules saved successfully!');
         setSaving(false);
       }, 1000);
     } catch (error) {
@@ -80,7 +83,7 @@ const Settings = () => {
     setSaving(true);
     try {
       setTimeout(() => {
-        alert('Tax settings saved successfully!');
+        success('Tax settings saved successfully!');
         setSaving(false);
       }, 1000);
     } catch (error) {
@@ -96,16 +99,16 @@ const Settings = () => {
 
   const confirmDeleteBanner = () => {
     setBanners(banners.filter(b => b.id !== deletingBannerId));
-    alert('Banner deleted successfully!');
+    success('Banner deleted successfully!');
   };
 
   const handleSaveBanner = (bannerData) => {
     if (editingBanner) {
       setBanners(banners.map(b => b.id === editingBanner.id ? { ...bannerData, id: editingBanner.id } : b));
-      alert('Banner updated successfully!');
+      success('Banner updated successfully!');
     } else {
       setBanners([...banners, { ...bannerData, id: Date.now() }]);
-      alert('Banner created successfully!');
+      success('Banner created successfully!');
     }
     setShowBannerModal(false);
     setEditingBanner(null);
@@ -114,7 +117,7 @@ const Settings = () => {
   const handleSaveTemplate = (templateData) => {
     if (editingTemplate) {
       setTemplates(templates.map(t => t.id === editingTemplate.id ? { ...templateData, id: editingTemplate.id } : t));
-      alert('Email template updated successfully!');
+      success('Email template updated successfully!');
     }
     setShowTemplateModal(false);
     setEditingTemplate(null);

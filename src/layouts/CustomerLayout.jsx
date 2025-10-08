@@ -5,7 +5,7 @@ import Topbar from '../components/common/TopBar';
 import { ToastContainer } from '../components/common/Toast';
 import { useToastContext } from '../context/ToastContext';
 
-const AdminLayout = () => {
+const CustomerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { toasts, removeToast } = useToastContext();
 
@@ -53,4 +53,4 @@ const AdminLayout = () => {
   );
 };
 
-export default AdminLayout;
+export default CustomerLayout;

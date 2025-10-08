@@ -23,6 +23,7 @@ import {
   mockTicketMessages,
   mockAdminUsers,
 } from '../../utils/mockData';
+import useToast from '../../hooks/useToast';
 
 const Support = () => {
   const [loading, setLoading] = useState(true);
@@ -38,25 +39,19 @@ const Support = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    fetchTickets();
-  }, [statusFilter, priorityFilter]);
+  const { success } = useToast();
 
   const fetchTickets = async () => {
     setLoading(true);
     try {
       setTimeout(() => {
         let filtered = mockTickets;
-        
         if (statusFilter !== 'all') {
           filtered = filtered.filter(t => t.status === statusFilter);
         }
-        
         if (priorityFilter !== 'all') {
           filtered = filtered.filter(t => t.priority === priorityFilter);
         }
-        
         setTickets(filtered);
         setStats(mockTicketStats);
         setLoading(false);
@@ -67,12 +62,15 @@ const Support = () => {
     }
   };
 
+  useEffect(() => {
+    fetchTickets();
+  }, [statusFilter, priorityFilter]);
+
   const handleViewTicket = (ticket) => {
     setSelectedTicket(ticket);
     setTicketMessages(mockTicketMessages[ticket.id] || []);
     setShowTicketModal(true);
   };
-
   const handleStatusChange = async (ticketId, newStatus) => {
     try {
       setTickets(tickets.map(t => 
@@ -81,7 +79,7 @@ const Support = () => {
       if (selectedTicket?.id === ticketId) {
         setSelectedTicket({ ...selectedTicket, status: newStatus });
       }
-      alert(`Ticket status updated to ${newStatus}`);
+      success(`Ticket status updated to ${newStatus}`);
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -96,7 +94,7 @@ const Support = () => {
       if (selectedTicket?.id === ticketId) {
         setSelectedTicket({ ...selectedTicket, assignedTo: admin?.name });
       }
-      alert('Ticket assigned successfully');
+      success('Ticket assigned successfully');
     } catch (error) {
       console.error('Error assigning ticket:', error);
     }

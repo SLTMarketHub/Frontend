@@ -78,7 +78,15 @@ export const LoadingState = ({ loading, error, children, skeleton = null }) => {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
         <p className="text-red-600 font-medium">Error loading data</p>
-        <p className="text-red-500 text-sm mt-1">{error}</p>
+        <p className="text-red-500 text-sm mt-1">{typeof error === 'string' ? error : 'Please try again.'}</p>
+        {typeof error === 'object' && error?.onRetry && (
+          <button
+            onClick={error.onRetry}
+            className="mt-3 inline-flex items-center px-4 py-2 bg-slt-primary text-white rounded hover:bg-slt-primary/90"
+          >
+            Retry
+          </button>
+        )}
       </div>
     );
   }

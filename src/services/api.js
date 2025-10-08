@@ -28,7 +28,6 @@ api.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           localStorage.removeItem('adminToken');
-          window.location.href = '/login';
           break;
         case 403:
           console.error('Access forbidden');

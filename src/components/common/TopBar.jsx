@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Search, User, LogOut, Settings, Menu } from 'lucide-react';
+import { Bell, User, LogOut, Settings, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Topbar = ({ sidebarOpen, toggleSidebar }) => {
@@ -30,15 +30,7 @@ const Topbar = ({ sidebarOpen, toggleSidebar }) => {
           >
             <Menu size={20} />
           </button>
-          
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slt-primary focus:border-transparent"
-            />
-          </div>
+          {/* Search removed by request */}
         </div>
         
         <div className="flex items-center space-x-4 ml-6">
@@ -72,20 +64,23 @@ const Topbar = ({ sidebarOpen, toggleSidebar }) => {
                   ))}
                 </div>
                 <div className="px-4 py-2 border-t border-gray-200">
-                  <button className="text-sm text-slt-primary hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => { setShowNotifications(false); navigate('/admin/support'); }}
+                    className="text-sm text-slt-primary hover:underline"
+                  >
                     View all notifications
                   </button>
                 </div>
               </div>
             )}
           </div>
-          
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-slt-primary to-slt-secondary rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-slt-gradient rounded-full flex items-center justify-center">
                 <User size={16} className="text-white" />
               </div>
               <div className="hidden md:block text-left">

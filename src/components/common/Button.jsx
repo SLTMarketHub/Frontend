@@ -13,19 +13,21 @@ const Button = ({
   fullWidth = false,
   className = '',
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slt-secondary';
   
-  const variantStyles = {
-    primary: 'bg-slt-primary hover:bg-slt-primary/90 text-white focus:ring-slt-primary disabled:bg-gray-300',
-    secondary: 'bg-slt-secondary hover:bg-slt-secondary/90 text-white focus:ring-slt-secondary disabled:bg-gray-300',
-    outline: 'border-2 border-slt-primary text-slt-primary hover:bg-slt-light focus:ring-slt-primary disabled:border-gray-300 disabled:text-gray-400',
-    ghost: 'text-slt-primary hover:bg-slt-light focus:ring-slt-primary disabled:text-gray-400',
-    danger: 'bg-error hover:bg-error/90 text-white focus:ring-error disabled:bg-gray-300',
-    success: 'bg-success hover:bg-success/90 text-white focus:ring-success disabled:bg-gray-300',
-    warning: 'bg-warning hover:bg-warning/90 text-white focus:ring-warning disabled:bg-gray-300',
+  const variantClasses = {
+    // Solid backgrounds for reliability
+    primary: 'bg-slt-secondary text-white hover:bg-slt-primary shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all',
+    secondary: 'bg-slt-cyan text-white hover:bg-slt-teal shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all',
+    success: 'bg-slt-green text-white hover:bg-green-600 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all',
+    danger: 'bg-red-600 text-white hover:bg-red-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all',
+    warning: 'bg-amber-600 text-white hover:bg-amber-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all',
+    outline: 'border-2 border-slt-secondary text-slt-secondary hover:bg-slt-light hover:border-slt-primary transition-all',
+    ghost: 'text-slt-dark hover:bg-slt-light transition-all',
+    slt: 'bg-slt-primary text-white hover:bg-slt-secondary hover:shadow-2xl transform hover:-translate-y-0.5 transition-all duration-300',
   };
   
-  const sizeStyles = {
+  const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm',
     md: 'px-4 py-2 text-base',
     lg: 'px-6 py-3 text-lg',
@@ -33,47 +35,31 @@ const Button = ({
   
   const widthStyle = fullWidth ? 'w-full' : '';
   
-  const classes = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${widthStyle} ${className}`;
+  const classes = `
+    ${baseClasses}
+    ${variantClasses[variant]}
+    ${sizeClasses[size]}
+    ${fullWidth ? 'w-full' : ''}
+    rounded-xl font-semibold
+    ${className}
+  `;
   
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
-      className={classes}
+      className={`${classes} disabled:opacity-60 disabled:cursor-not-allowed`}
     >
       {loading && (
-        <svg
-          className="animate-spin -ml-1 mr-2 h-4 w-4"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          />
-        </svg>
+        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
       )}
       
-      {icon && iconPosition === 'left' && !loading && (
+      {icon && !loading && (
         <span className="mr-2">{icon}</span>
       )}
       
       {children}
-      
-      {icon && iconPosition === 'right' && !loading && (
-        <span className="ml-2">{icon}</span>
-      )}
     </button>
   );
 };
