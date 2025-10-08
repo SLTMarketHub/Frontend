@@ -1,34 +1,43 @@
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import AdminDashboard from './pages/admin/Dashboard';
-import UserManagement from './pages/admin/Users';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import AdminLayout from './layouts/AdminLayout';
+import Analytics from './pages/admin/Analytics';
+import Settings from './pages/admin/Settings';
+import Support from './pages/admin/Support';
 
 function App() {
   return (
-    <Router>
-      <div className="flex h-screen bg-gray-100">
-        {/* Sidebar Navigation */}
-        <aside className="w-64 bg-gray-800 text-white flex flex-col">
-          <div className="p-4 text-2xl font-bold border-b border-gray-700">MARKETHUB</div>
-          <nav className="flex-1 p-4 space-y-2">
-            <Link to="/admin/dashboard" className="block px-4 py-2 rounded-md hover:bg-gray-700">Dashboard</Link>
-            <Link to="/admin/users" className="block px-4 py-2 rounded-md hover:bg-gray-700">User Management</Link>
-            {/* Add more admin links here */}
-          </nav>
-        </aside>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/admin/analytics" replace />} />
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto">
-          <Routes>
-            <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<UserManagement />} />
-            {/* Define other routes for your application here */}
-          </Routes>
-        </main>
-      </div>
-    </Router>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="/admin/analytics" replace />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="support" element={<Support />} />
+        </Route>
+
+        <Route
+          path="*"
+          element={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <div className="text-center">
+                <h1 className="text-6xl font-bold text-slt-primary">404</h1>
+                <p className="text-xl text-gray-600 mt-4">Page not found</p>
+                <a
+                  href="/admin/analytics"
+                  className="inline-block mt-6 px-6 py-3 bg-slt-primary text-white rounded-lg hover:bg-slt-primary/90"
+                >
+                  Go to Dashboard
+                </a>
+              </div>
+            </div>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
 export default App;
-
