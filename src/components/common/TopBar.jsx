@@ -21,12 +21,12 @@ const Topbar = ({ sidebarOpen, toggleSidebar }) => {
   };
   
   return (
-    <header className="bg-white border-b border-gray-200 h-16 fixed top-0 right-0 left-0 z-30">
+    <header className="bg-gradient-to-r from-[#0F55A7] to-[#4DB848] h-16 fixed top-0 right-0 left-0 z-30">
       <div className={`flex items-center justify-between h-full px-6 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
         <div className="flex items-center flex-1 max-w-2xl">
           <button
             onClick={toggleSidebar}
-            className="lg:hidden mr-4 p-2 rounded-lg hover:bg-gray-100"
+            className="lg:hidden mr-4 p-2 rounded-lg hover:bg-white/20 text-white"
           >
             <Menu size={20} />
           </button>
@@ -37,11 +37,11 @@ const Topbar = ({ sidebarOpen, toggleSidebar }) => {
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="relative p-2 rounded-lg hover:bg-white/20 transition-colors"
             >
-              <Bell size={20} className="text-gray-600" />
+              <Bell size={20} className="text-white" />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               )}
             </button>
             
@@ -78,14 +78,14 @@ const Topbar = ({ sidebarOpen, toggleSidebar }) => {
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/20 transition-colors"
             >
-              <div className="w-8 h-8 bg-slt-gradient rounded-full flex items-center justify-center">
-                <User size={16} className="text-white" />
+              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                <User size={16} className="text-[#0F55A7]" />
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-semibold text-gray-900">Admin User</p>
-                <p className="text-xs text-gray-500">admin@slt.lk</p>
+                <p className="text-sm font-semibold text-white">Admin User</p>
+                <p className="text-xs text-white/80">admin@slt.lk</p>
               </div>
             </button>
             

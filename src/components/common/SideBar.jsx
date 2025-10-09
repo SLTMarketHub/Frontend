@@ -65,22 +65,22 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     <>
       <aside
         className={`
-          fixed left-0 top-0 z-40 h-screen transition-all duration-300 bg-white shadow-sidebar
+          fixed left-0 top-0 z-40 h-screen transition-all duration-300 bg-gradient-to-b from-[#0F55A7] to-[#4DB848] shadow-sidebar
           ${isOpen ? 'w-64' : 'w-20'}
         `}
       >
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-white/20">
           {isOpen && (
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-slt-gradient rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">SLT</span>
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                <span className="text-[#0F55A7] font-bold text-sm">SLT</span>
               </div>
-              <span className="text-lg font-bold text-gray-900">MarketHub</span>
+              <span className="text-lg font-bold text-white">MarketHub</span>
             </div>
           )}
           {!isOpen && (
-            <div className="w-8 h-8 bg-slt-gradient rounded-lg flex items-center justify-center mx-auto">
-              <span className="text-white font-bold text-sm">SLT</span>
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center mx-auto">
+              <span className="text-[#0F55A7] font-bold text-sm">SLT</span>
             </div>
           )}
         </div>
@@ -101,8 +101,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   className={`
                     flex items-center px-3 py-3 rounded-lg transition-all duration-200
                     ${isActive(item.path)
-                      ? 'bg-slt-light text-slt-primary font-semibold'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-white/20 text-white font-semibold'
+                      : 'text-white/80 hover:bg-white/10 hover:text-white'
                     }
                     ${!isOpen && 'justify-center'}
                   `}
@@ -119,8 +119,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         </nav>
         
         {isOpen && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
-            <div className="text-xs text-gray-500 text-center">
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/20">
+            <div className="text-xs text-white/70 text-center">
               © 2025 SLT MarketHub
             </div>
           </div>
