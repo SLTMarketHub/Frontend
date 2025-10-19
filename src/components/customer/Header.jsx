@@ -1,9 +1,15 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 
 export default function Header() {
     const { cartCount } = useCart();
+    const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
+
+    const goToCart = () => {
+        navigate("/cart");
+    };
 
     return (
         <div className="flex align-center w-full p-4 bg-gradient-to-r from-[#0F55A7] to-[#4DB848] text-white font-bold justify-between relative">
@@ -84,7 +90,7 @@ export default function Header() {
                     {dropdownOpen && (
                         <div
                             className="absolute right-0 mt-2 text-black rounded-lg shadow-lg z-50"
-                        onMouseLeave={() => setDropdownOpen(false)}
+                            onMouseLeave={() => setDropdownOpen(false)}
                         >
                             <div className="text-center font-semibold align-middle justify-center p-4 bg-gray-100 shadow-md rounded-lg">
                                 <button className="block px-6 py-2 hover:bg-gray-100 justify-center text-center border-blue-600 border-2 rounded-lg text-blue-600">
@@ -98,8 +104,11 @@ export default function Header() {
                     )}
                 </div>
 
-                {/* Cart */}
-                <div className="relative cursor-pointer">
+                {/* Cart with count */}
+                <div
+                    className="relative cursor-pointer"
+                    onClick={goToCart}
+                >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"

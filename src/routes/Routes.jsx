@@ -3,6 +3,7 @@ import HomePage from "../pages/customer/HomePage.jsx";
 import ProductCategory from "../pages/customer/ProductCategory.jsx";
 import NotFound from "../pages/NotFound.jsx";
 import ProductPage from "../pages/customer/ProductPage.jsx";
+import CartPage from "../pages/customer/CartPage.jsx";
 
 const router = createBrowserRouter([
   {
@@ -10,7 +11,7 @@ const router = createBrowserRouter([
     element: <HomePage />,
   },
   {
-    path: "/category/:categoryName",
+    path: "/category/:categoryId",
     element: <ProductCategory />,
   },
   {
@@ -21,6 +22,10 @@ const router = createBrowserRouter([
     path: "*",
     element: <NotFound />,
   },
+  {
+    path: "/cart",
+    element: <CartPage />,
+  }
 ]);
 
 export default router;
