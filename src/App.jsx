@@ -13,8 +13,8 @@ function App() {
   return (
     <div className="bg-gray-100S">
       <RouterProvider router={router} />
-    </div>
-    
+    </div> 
+
   )
 }
 

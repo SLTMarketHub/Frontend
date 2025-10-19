@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useNavigate } from "react-router-dom"; // <-- Import for navigation
+import { useNavigate } from "react-router-dom";
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 import CartItem from "../../components/customer/cart/CartItem";
@@ -10,8 +10,8 @@ import ShippingOptions from "../../components/customer/cart/ShippingOptions";
 import PaymentMethods from "../../components/customer/cart/PaymentMethods";
 
 const CartPage = () => {
-  const navigate = useNavigate(); // <-- Initialize navigate
-  const goBackHome = () => navigate("/"); // <-- Function to navigate home
+  const navigate = useNavigate();
+  const goBackHome = () => navigate("/");
 
   const [cartItems, setCartItems] = useState([
     { id: 1, name: "Wireless Headphones", price: 120, qty: 1, image: "/assets/headphones.png" },
@@ -42,14 +42,8 @@ const CartPage = () => {
               onClick={goBackHome}
               className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2.5}
-                stroke="currentColor"
-                className="w-5 h-5"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7 7-7M3 12h18" />
               </svg>
               Back to Home
@@ -101,7 +95,14 @@ const CartPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <CartSummary cartItems={cartItems} promoCode={promoCode} setPromoCode={setPromoCode} />
+          <CartSummary
+            cartItems={cartItems}
+            promoCode={promoCode}
+            setPromoCode={setPromoCode}
+            address={address}
+            shipping={shipping}
+            payment={payment}
+          />
         </motion.div>
       </main>
 
