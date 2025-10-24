@@ -8,9 +8,7 @@ export default function Product({ productDetails }) {
     const [alert, setAlert] = useState("");
 
     const VITE_ENDPOINT_TMF622_ORDER = import.meta.env.VITE_ENDPOINT_TMF622_ORDER;
-    const VITE_ENDPOINT_TMF622_CANCELORDER = import.meta.env.VITE_ENDPOINT_TMF622_CANCELORDER;
-
-    const customerId = sessionStorage.getItem("userId"); // ✅ get customerId from sessio
+    const customerId = sessionStorage.getItem("userId");
 
     const increaseQuantity = () => setQuantity((q) => q + 1);
     const decreaseQuantity = () => setQuantity((q) => (q > 1 ? q - 1 : 1));
@@ -21,46 +19,95 @@ export default function Product({ productDetails }) {
         setTimeout(() => setShow(false), 3000);
     };
 
-    const handleAddToCart = async () => {
+    const handleAddToCart = () => {
         try {
-            const res = await fetch(VITE_ENDPOINT_TMF622_ORDER, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    customerId,
-                    productId: productDetails?.id,
-                    quantity,
-                }),
-            });
+            let cart = JSON.parse(localStorage.getItem("cart")) || [];
+            const existingIndex = cart.findIndex(
+                (item) => item.productId === productDetails.id
+            );
 
-            if (res.ok) {
-                addToCart(quantity);
-                showAlert("success", `${productDetails.name} added to cart!`);
+            if (existingIndex !== -1) {
+                cart[existingIndex].quantity += quantity;
             } else {
-                showAlert("error", "Failed to add product to cart.");
+                cart.push({
+                    customerId,
+                    productId: productDetails.id,
+                    name: productDetails.name,
+                    price: productDetails.resolvedPrice,
+                    image:
+                        productDetails.productImage?.[0]?.url ||
+                        "/assets/images/placeholderImg.jpg",
+                    quantity,
+                });
             }
+
+            localStorage.setItem("cart", JSON.stringify(cart));
+            addToCart(quantity);
+            showAlert("success", `Product added to cart!`);
         } catch (err) {
             console.error("Add to cart error:", err);
-            showAlert("error", "Error occurred. Please try again.");
+            showAlert("error", "Failed to add to cart. Please try again.");
         }
     };
 
     const handleBuyNow = async () => {
         try {
-            const res = await fetch(VITE_ENDPOINT_TMF622_ORDER, { // ✅ fixed API variable
+            const orderPayload = {
+                externalId: `ORDER-${Date.now()}`,
+                priority: "Normal",
+                description: `Order for ${productDetails.name}`,
+                category: "Product Purchase",
+                requestedStartDate: new Date().toISOString(),
+                requestedCompletionDate: new Date(
+                    Date.now() + 24 * 60 * 60 * 1000
+                ).toISOString(),
+                orderItem: [
+                    {
+                        id: "1",
+                        action: "add",
+                        quantity: quantity,
+                        product: {
+                            id: productDetails.id,
+                            name: productDetails.name,
+                            productSpecification: {
+                                id: `PS-${productDetails.id}`,
+                                name: productDetails.name + " Specification"
+                            }
+                        },
+                        productOffering: {
+                            id: productDetails.id,
+                            name: productDetails.name
+                        },
+                        billingAccount: {
+                            id: `ACC-${customerId}`,
+                            name: "Customer Account"
+                        }
+                    }
+                ],
+                relatedParty: [
+                    {
+                        id: customerId,
+                        role: "Customer",
+                        name: "Customer"
+                    }
+                ],
+                state: "acknowledged"
+            };
+
+            const res = await fetch(VITE_ENDPOINT_TMF622_ORDER, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    customerId,
-                    productId: productDetails?.id,
-                    quantity,
-                }),
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify(orderPayload)
             });
 
             if (res.ok) {
                 showAlert("success", `${productDetails.name} purchased successfully!`);
-                // navigate("/checkout", { state: { product: productDetails, quantity } });
             } else {
+                const errorData = await res.json();
+                console.error("Order API Error:", errorData);
                 showAlert("error", "Failed to process your order.");
             }
         } catch (err) {
@@ -80,7 +127,6 @@ export default function Product({ productDetails }) {
     return (
         <div className="block m-6">
             <div className="flex mb-2">
-                {/* Product Image */}
                 <img
                     src={
                         productDetails.productImage?.[0]?.url ||
@@ -91,7 +137,6 @@ export default function Product({ productDetails }) {
                 />
 
                 <div className="flex-col mx-4 w-full">
-                    {/* Product Name */}
                     <h2 className="text-3xl font-bold text-left mb-2">
                         {productDetails.name || "No Information"}
                     </h2>
@@ -106,7 +151,6 @@ export default function Product({ productDetails }) {
 
                     <div className="h-[1px] bg-gray-300 my-4"></div>
 
-                    {/* Product Price */}
                     <p className="text-blue-900 font-bold text-3xl mb-4">
                         {productDetails.resolvedPrice || "0.00"}
                     </p>
@@ -135,7 +179,6 @@ export default function Product({ productDetails }) {
                         </p>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex">
                         <button
                             onClick={handleBuyNow}
@@ -165,10 +208,8 @@ export default function Product({ productDetails }) {
                 </div>
             </div>
 
-            {/* Divider */}
             <div className="h-[1px] bg-gray-300 my-4"></div>
 
-            {/* Product Details */}
             <div>
                 <h3 className="text-2xl font-bold mb-4 text-center">
                     Product Details
