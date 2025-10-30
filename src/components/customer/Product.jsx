@@ -1,116 +1,158 @@
 import React, { useState } from "react";
-import { useCart } from '../../context/CartContext.jsx';
+import { useCart } from "../../context/CartContext.jsx";
 
-export default function Product(props) {
+export default function Product({ productDetails }) {
     const [quantity, setQuantity] = useState(1);
     const { addToCart } = useCart();
     const [show, setShow] = useState(false);
-    const [alart, setAlart] = useState();
+    const [alert, setAlert] = useState("");
+
+    const VITE_ENDPOINT_TMF622_ORDER = import.meta.env.VITE_ENDPOINT_TMF622_ORDER;
+    const customerId = sessionStorage.getItem("userId");
 
     const increaseQuantity = () => setQuantity((q) => q + 1);
     const decreaseQuantity = () => setQuantity((q) => (q > 1 ? q - 1 : 1));
 
-    const customerId = "12345";
+    const showAlert = (type, message) => {
+        setAlert({ type, message });
+        setShow(true);
+        setTimeout(() => setShow(false), 3000);
+    };
 
-    const BASE_URL = import.meta.env.VITE_BASE_URL;
-    const API_GROUP = import.meta.env.VITE_API_GROUP_TMF622;
-    const RESOURCE = import.meta.env.VITE_RESOURCE_TMF622;
-
-    const handleAddToCart = async () => {
+    const handleAddToCart = () => {
         try {
-            const res = await fetch(`${BASE_URL}/${API_GROUP}/${RESOURCE}/`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    customerId,
-                    productId: props.productId,
-                    quantity,
-                }),
-            });
+            let cart = JSON.parse(localStorage.getItem("cart")) || [];
+            const existingIndex = cart.findIndex(
+                (item) => item.productId === productDetails.id
+            );
 
-            const data = await res.json();
-            if (res.ok) {
-                setAlart("success");
-                setShow(true);
-                setTimeout(() => setShow(false), 3000);
+            if (existingIndex !== -1) {
+                cart[existingIndex].quantity += quantity;
             } else {
-                setAlart("failed");
-                setShow(true);
-                setTimeout(() => setShow(false), 3000);
+                cart.push({
+                    customerId,
+                    productId: productDetails.id,
+                    name: productDetails.name,
+                    price: productDetails.resolvedPrice,
+                    image:
+                        productDetails.productImage?.[0]?.url ||
+                        "/assets/images/placeholderImg.jpg",
+                    quantity,
+                });
             }
-            console.log(`Adding to cart: customerId=${customerId}, productId=${props.productId}, quantity=${quantity}`);
-            console.log(`${BASE_URL}/${API_GROUP}/${RESOURCE}`)
 
-            setAlart("success");
+            localStorage.setItem("cart", JSON.stringify(cart));
             addToCart(quantity);
-            setShow(true);
-            setTimeout(() => setShow(false), 3000);
+            showAlert("success", `Product added to cart!`);
         } catch (err) {
-            console.error(err);
-            setAlart("failed");
-            setShow(true);
-            setTimeout(() => setShow(false), 3000);
+            console.error("Add to cart error:", err);
+            showAlert("error", "Failed to add to cart. Please try again.");
         }
     };
 
     const handleBuyNow = async () => {
         try {
-            const res = await fetch(`${BASE_URL}/${API_GROUP}/${RESOURCE}/`, {
+            const orderPayload = {
+                externalId: `ORDER-${Date.now()}`,
+                priority: "Normal",
+                description: `Order for ${productDetails.name}`,
+                category: "Product Purchase",
+                requestedStartDate: new Date().toISOString(),
+                requestedCompletionDate: new Date(
+                    Date.now() + 24 * 60 * 60 * 1000
+                ).toISOString(),
+                orderItem: [
+                    {
+                        id: "1",
+                        action: "add",
+                        quantity: quantity,
+                        product: {
+                            id: productDetails.id,
+                            name: productDetails.name,
+                            productSpecification: {
+                                id: `PS-${productDetails.id}`,
+                                name: productDetails.name + " Specification"
+                            }
+                        },
+                        productOffering: {
+                            id: productDetails.id,
+                            name: productDetails.name
+                        },
+                        billingAccount: {
+                            id: `ACC-${customerId}`,
+                            name: "Customer Account"
+                        }
+                    }
+                ],
+                relatedParty: [
+                    {
+                        id: customerId,
+                        role: "Customer",
+                        name: "Customer"
+                    }
+                ],
+                state: "acknowledged"
+            };
+
+            const res = await fetch(VITE_ENDPOINT_TMF622_ORDER, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    customerId,
-                    productId: props.productId,
-                    quantity,
-                }),
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify(orderPayload)
             });
 
-            const data = await res.json();
-            if (res.ok && data.success) {
-                // navigate("/checkout", { state: { product: props, quantity } });
+            if (res.ok) {
+                showAlert("success", `${productDetails.name} purchased successfully!`);
             } else {
-                setAlart("failed");
-                setShow(true);
-                setTimeout(() => setShow(false), 3000);
+                const errorData = await res.json();
+                console.error("Order API Error:", errorData);
+                showAlert("error", "Failed to process your order.");
             }
-            console.log(`Buy Now: customerId=${customerId}, productId=${props.productId}, quantity=${quantity}`);
         } catch (err) {
-            console.error(err);
-            setAlart("failed");
-            setShow(true);
-            setTimeout(() => setShow(false), 3000);
+            console.error("Buy Now error:", err);
+            showAlert("error", "Error occurred. Please try again.");
         }
     };
+
+    if (!productDetails) {
+        return (
+            <div className="p-6 text-center text-gray-600">
+                No product details available.
+            </div>
+        );
+    }
 
     return (
         <div className="block m-6">
             <div className="flex mb-2">
                 <img
                     src={
-                        props.productImage ||
+                        productDetails.productImage?.[0]?.url ||
                         "/assets/images/placeholderImg.jpg"
                     }
-                    alt={props.productName || "Product"}
+                    alt={productDetails.name || "Product"}
                     className="w-[24rem] h-[24rem] object-cover rounded-lg mr-4"
                 />
+
                 <div className="flex-col mx-4 w-full">
-                    {/* Product Name */}
                     <h2 className="text-3xl font-bold text-left mb-2">
-                        {props.productName || "No Information"}
+                        {productDetails.name || "No Information"}
                     </h2>
 
                     {/* Product Category */}
                     <p className="wrap-anywhere mb-4 text-justify">
-                        Category: {props.productCategory || "No Information"}
+                        Category:{" "}
+                        {Array.isArray(productDetails.category)
+                            ? productDetails.category.map((c) => c.name).join(", ")
+                            : productDetails.category?.name || "No Information"}
                     </p>
 
                     <div className="h-[1px] bg-gray-300 my-4"></div>
 
-                    {/* Product Price */}
                     <p className="text-blue-900 font-bold text-3xl mb-4">
-                        {props.productPrice
-                            ? `Rs. ${props.productPrice}`
-                            : "No Information"}
+                        {productDetails.resolvedPrice || "0.00"}
                     </p>
 
                     {/* Quantity + Stock */}
@@ -122,9 +164,7 @@ export default function Product(props) {
                             >
                                 −
                             </button>
-                            <span className="text-lg font-medium">
-                                {quantity}
-                            </span>
+                            <span className="text-lg font-medium">{quantity}</span>
                             <button
                                 onClick={increaseQuantity}
                                 className="text-xl font-bold text-gray-600 hover:text-[#0F55A7]"
@@ -132,9 +172,9 @@ export default function Product(props) {
                                 +
                             </button>
                         </div>
-                        <p className="ml-6 self-center-safe content-center ">
-                            {props.availableStock !== undefined
-                                ? `Available Stock: ${props.availableStock}`
+                        <p className="ml-6 self-center-safe content-center">
+                            {productDetails.availableStock !== undefined
+                                ? `Available Stock: ${productDetails.availableStock}`
                                 : "Available Stock: No Information"}
                         </p>
                     </div>
@@ -157,17 +197,26 @@ export default function Product(props) {
                         {/* Alert */}
                         {show && (
                             <div
-                                className={`fixed top-24 right-2 px-6 py-3 rounded-lg shadow-lg text-white transition-opacity duration-300 ${alart === "success" ? "bg-green-500" : "bg-red-600"
-                                    }`}
+                                className={`fixed top-24 right-2 px-6 py-3 rounded-lg shadow-lg text-white transition-opacity duration-300 ${
+                                    alert.type === "success" ? "bg-green-500" : "bg-red-600"
+                                }`}
                             >
-                                {alart === "success"
-                                    ? `${props.productName} added to cart!`
-                                    : "Error occurred. Please try again."}
+                                {alert.message}
                             </div>
                         )}
                     </div>
-
                 </div>
+            </div>
+
+            <div className="h-[1px] bg-gray-300 my-4"></div>
+
+            <div>
+                <h3 className="text-2xl font-bold mb-4 text-center">
+                    Product Details
+                </h3>
+                <p className="text-gray-600 text-center">
+                    {productDetails.description || "No product description available."}
+                </p>
             </div>
         </div>
     );
