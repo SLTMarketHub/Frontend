@@ -1,10 +1,23 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const CartSummary = ({ cartItems, promoCode, setPromoCode, address, shipping, payment }) => {
+const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) => {
   const navigate = useNavigate();
+  const [cartItems, setCartItems] = useState([]);
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+  // Load cart items from localStorage
+  useEffect(() => {
+    const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
+    setCartItems(storedCart);
+  }, []);
+
+  // Calculate subtotal
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  // Apply promo discount
   const discount = promoCode === "SAVE10" ? subtotal * 0.1 : 0;
 
   // Dynamic shipping cost
@@ -14,7 +27,12 @@ const CartSummary = ({ cartItems, promoCode, setPromoCode, address, shipping, pa
 
   const total = subtotal - discount + shippingCost;
 
+  // Handle Checkout
   const handleCheckout = () => {
+    if (cartItems.length === 0) {
+      alert("⚠️ Your cart is empty.");
+      return;
+    }
     if (!address) {
       alert("⚠️ Please select a delivery address.");
       return;
@@ -29,11 +47,13 @@ const CartSummary = ({ cartItems, promoCode, setPromoCode, address, shipping, pa
     }
 
     // ✅ Navigate to checkout page with order details
-    navigate("/checkout", { state: { cartItems, address, shipping, payment, total } });
+    navigate("/checkout", {
+      state: { cartItems, address, shipping, payment, total },
+    });
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
       <h3 className="text-2xl font-bold text-gray-800">Order Summary</h3>
 
       <div className="flex justify-between text-gray-700">
@@ -48,7 +68,9 @@ const CartSummary = ({ cartItems, promoCode, setPromoCode, address, shipping, pa
 
       <div className="flex justify-between text-gray-700">
         <span>Shipping</span>
-        <span>{shippingCost === 0 ? "—" : `Rs.${shippingCost.toFixed(2)}`}</span>
+        <span>
+          {shippingCost === 0 ? "—" : `Rs.${shippingCost.toFixed(2)}`}
+        </span>
       </div>
 
       <hr className="border-gray-300" />
@@ -68,7 +90,7 @@ const CartSummary = ({ cartItems, promoCode, setPromoCode, address, shipping, pa
 
       <button
         onClick={handleCheckout}
-        className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors"
+        className="w-full mt-4 bg-[#0F55A7]/90 hover:bg-[#0F55A7] text-white font-semibold py-3 rounded-lg transition-colors"
       >
         Proceed to Checkout
       </button>
