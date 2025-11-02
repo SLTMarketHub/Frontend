@@ -12,12 +12,11 @@ export default function ProductPage() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [productDetails, setProductDetails] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [relatedLoading, setRelatedLoading] = useState(false); // NEW
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   const VITE_ENDPOINT_TMF620_OFFERING = import.meta.env.VITE_ENDPOINT_TMF620_OFFERING;
   const PRICE_ENDPOINT = import.meta.env.VITE_ENDPOINT_TMF620_PRICE;
 
-  // Helper function to resolve price
   const fetchPrice = async (priceId) => {
     try {
       const priceRes = await fetch(`${PRICE_ENDPOINT}${priceId}`);
@@ -40,7 +39,6 @@ export default function ProductPage() {
     }
   };
 
-  // Fetch product details
   useEffect(() => {
     async function fetchProductDetails() {
       try {
@@ -69,12 +67,9 @@ export default function ProductPage() {
       }
     }
 
-    if (id) {
-      fetchProductDetails();
-    }
+    if (id) fetchProductDetails();
   }, [id, VITE_ENDPOINT_TMF620_OFFERING, PRICE_ENDPOINT]);
 
-  // Fetch related products by category
   const fetchRelatedProducts = async (categoryId, excludeProductId) => {
     setRelatedLoading(true);
     try {
@@ -84,7 +79,6 @@ export default function ProductPage() {
       if (data && Array.isArray(data.data)) {
         const filtered = data.data.filter((p) => p.id !== excludeProductId);
 
-        // Resolve price for each related product
         const productsWithPrice = await Promise.all(
           filtered.map(async (p) => {
             let resolvedPrice = "N/A";
@@ -101,7 +95,7 @@ export default function ProductPage() {
       console.error("Error fetching related products:", err);
       setRelatedProducts([]);
     } finally {
-      setRelatedLoading(false); // hide spinner
+      setRelatedLoading(false);
     }
   };
 
@@ -150,6 +144,7 @@ export default function ProductPage() {
           <h2 className="text-blue-900 text-3xl font-bold text-left mb-4">
             More To Love
           </h2>
+
           {relatedLoading ? (
             <div className="flex justify-center items-center py-6">
               <ThreeDots color="#4DB848" height={50} width={50} />
@@ -161,7 +156,7 @@ export default function ProductPage() {
                   key={p.id}
                   className="min-w-[16rem] flex-shrink-0 border-0 p-3 rounded-lg shadow"
                 >
-                  <ProductCard {...p} />
+                  <ProductCard productDetails={p} />
                 </div>
               ))}
             </div>
