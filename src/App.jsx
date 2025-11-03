@@ -7,6 +7,8 @@ import CompleteSignupPage from "./pages/auth/CompleteSignUpPage.jsx";
 import GoogleSuccess from "./pages/auth/GoogleSuccessPage.jsx";
 import GoogleCallback from "./pages/auth/GoogleCallbackPage.jsx";
 import NotFoundPage from "./pages/auth/NotFoundPage.jsx";
+import RegisterOthersPage from "./pages/auth/RegisterOthersPage.jsx";
+import LoginOthersPage from "./pages/auth/LoginOthersPage.jsx";
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -23,11 +25,13 @@ function App() {
     return (
         <Routes>
             {/* Default route */}
-            <Route path="/" element={<Navigate to="/register" replace />} />
+            <Route path="/" element={<Navigate to="/registerOthers" replace />} />
 
             {/* Auth routes */}
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/registerOthers" element={<RegisterOthersPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/loginOthers" element={<LoginOthersPage />} />
             <Route path="/complete-signup" element={<CompleteSignupPage />} />
 
             {/* Google OAuth routes */}
