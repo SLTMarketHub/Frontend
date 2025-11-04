@@ -13,7 +13,7 @@ export default function Header() {
     const goToLogin = () => navigate("/login");
     const goToSignUp = () => navigate("/register");
     const goToCart = () => navigate("/cart");
-    const goToProfile = () => navigate("/profile");
+    const goToProfile = () => navigate(`/user/profile/${userDetails?.username || authUser?.name}`);
     const goToOrders = () => navigate("/orders");
 
     const [userDetails, setUserDetails] = useState(null);
@@ -71,7 +71,7 @@ export default function Header() {
             {/* Right Section */}
             <div className="flex space-x-8 items-center relative mr-4">
                 {/* Notifications */}
-                <div className="cursor-pointer">
+                {/* <div className="cursor-pointer">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
                         <path
                             fillRule="evenodd"

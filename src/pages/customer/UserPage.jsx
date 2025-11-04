@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 
@@ -8,7 +8,7 @@ const UserPage = () => {
   // const [orders, setOrders] = useState([]);
   //
   // useEffect(() => {
-  //   const storedUserId = sessionStorage.getItem("userId"); // assuming userId is stored in sessionStorage
+  //   const storedUserId = sessionStorage.getItem("userId");
   //   if (storedUserId) {
   //     fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/${storedUserId}`)
   //       .then((res) => res.json())
@@ -22,6 +22,7 @@ const UserPage = () => {
   //   }
   // }, []);
 
+  const [userDetails, setUserDetails] = useState(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwords, setPasswords] = useState({
@@ -31,6 +32,13 @@ const UserPage = () => {
   });
   const [passwordMatch, setPasswordMatch] = useState(true);
 
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUserDetails(JSON.parse(storedUser));
+    }
+  }, []);
+
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...passwords, [name]: value };
@@ -38,9 +46,9 @@ const UserPage = () => {
     setPasswordMatch(updated.new === updated.repeat);
   };
 
-    const ViewOrdersBtnClick = () => {
-        window.location.href = `/user/12345/orders`;
-    };
+  const ViewOrdersBtnClick = () => {
+    window.location.href = "/orders";
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -52,9 +60,11 @@ const UserPage = () => {
           <div className="flex flex-col md:flex-row items-center justify-center mb-8 border-b pb-6">
             <div className="text-center">
               <h1 className="text-3xl font-bold text-gray-800">
-                Hi, Customer Name 👋
+                Hi, {userDetails?.username || "Customer Name"} 👋
               </h1>
-              <p className="text-gray-600 mt-1">customer@example.com</p>
+              <p className="text-gray-600 mt-1">
+                {userDetails?.email || "customer@example.com"}
+              </p>
               <p className="text-gray-600">+94 71 234 5678</p>
               <p className="text-gray-600">123 Main Street, Colombo</p>
               <p className="text-gray-500 text-sm mt-1">
@@ -100,7 +110,10 @@ const UserPage = () => {
                   <p className="text-sm text-gray-600">Total: LKR 4,200.00</p>
                 </li>
               </ul>
-              <button onClick={ViewOrdersBtnClick}  className="mt-4 text-blue-600 hover:underline font-medium cursor-pointer">
+              <button
+                onClick={ViewOrdersBtnClick}
+                className="mt-4 text-blue-600 hover:underline font-medium cursor-pointer"
+              >
                 View All Orders →
               </button>
             </div>
