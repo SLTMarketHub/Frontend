@@ -422,6 +422,336 @@ class PartnerManagementService {
       ]
     };
   }
+
+  // TMF668 Partnership Management API - Additional Endpoints
+
+  /**
+   * Service Candidate endpoints
+   */
+  async listServiceCandidates(params = {}) {
+    try {
+      const response = await apiClient.get('/tmf-api/partnershipManagement/v4/serviceCandidate', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching service candidates:', error);
+      throw error;
+    }
+  }
+
+  async getServiceCandidate(id) {
+    try {
+      const response = await apiClient.get(`/tmf-api/partnershipManagement/v4/serviceCandidate/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching service candidate:', error);
+      throw error;
+    }
+  }
+
+  async createServiceCandidate(data) {
+    try {
+      const response = await apiClient.post('/tmf-api/partnershipManagement/v4/serviceCandidate', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating service candidate:', error);
+      throw error;
+    }
+  }
+
+  async updateServiceCandidate(id, data) {
+    try {
+      const response = await apiClient.patch(`/tmf-api/partnershipManagement/v4/serviceCandidate/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating service candidate:', error);
+      throw error;
+    }
+  }
+
+  async deleteServiceCandidate(id) {
+    try {
+      await apiClient.delete(`/tmf-api/partnershipManagement/v4/serviceCandidate/${id}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting service candidate:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Service Specification endpoints
+   */
+  async listServiceSpecifications(params = {}) {
+    try {
+      const response = await apiClient.get('/tmf-api/partnershipManagement/v4/serviceSpecification', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching service specifications:', error);
+      throw error;
+    }
+  }
+
+  async getServiceSpecification(id) {
+    try {
+      const response = await apiClient.get(`/tmf-api/partnershipManagement/v4/serviceSpecification/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching service specification:', error);
+      throw error;
+    }
+  }
+
+  async createServiceSpecification(data) {
+    try {
+      const response = await apiClient.post('/tmf-api/partnershipManagement/v4/serviceSpecification', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating service specification:', error);
+      throw error;
+    }
+  }
+
+  async updateServiceSpecification(id, data) {
+    try {
+      const response = await apiClient.patch(`/tmf-api/partnershipManagement/v4/serviceSpecification/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating service specification:', error);
+      throw error;
+    }
+  }
+
+  async deleteServiceSpecification(id) {
+    try {
+      await apiClient.delete(`/tmf-api/partnershipManagement/v4/serviceSpecification/${id}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting service specification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Import/Export Job endpoints
+   */
+  async listImportJobs(params = {}) {
+    try {
+      const response = await apiClient.get('/tmf-api/partnershipManagement/v4/importJob', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching import jobs:', error);
+      throw error;
+    }
+  }
+
+  async getImportJob(id) {
+    try {
+      const response = await apiClient.get(`/tmf-api/partnershipManagement/v4/importJob/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching import job:', error);
+      throw error;
+    }
+  }
+
+  async createImportJob(data) {
+    try {
+      const response = await apiClient.post('/tmf-api/partnershipManagement/v4/importJob', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating import job:', error);
+      throw error;
+    }
+  }
+
+  async deleteImportJob(id) {
+    try {
+      await apiClient.delete(`/tmf-api/partnershipManagement/v4/importJob/${id}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting import job:', error);
+      throw error;
+    }
+  }
+
+  async listExportJobs(params = {}) {
+    try {
+      const response = await apiClient.get('/tmf-api/partnershipManagement/v4/exportJob', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching export jobs:', error);
+      throw error;
+    }
+  }
+
+  async getExportJob(id) {
+    try {
+      const response = await apiClient.get(`/tmf-api/partnershipManagement/v4/exportJob/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching export job:', error);
+      throw error;
+    }
+  }
+
+  async createExportJob(data) {
+    try {
+      const response = await apiClient.post('/tmf-api/partnershipManagement/v4/exportJob', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating export job:', error);
+      throw error;
+    }
+  }
+
+  async deleteExportJob(id) {
+    try {
+      await apiClient.delete(`/tmf-api/partnershipManagement/v4/exportJob/${id}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting export job:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Hub endpoints (for event notifications)
+   */
+  async createHub(data) {
+    try {
+      const response = await apiClient.post('/tmf-api/partnershipManagement/v4/hub', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating hub:', error);
+      throw error;
+    }
+  }
+
+  async deleteHub(id) {
+    try {
+      await apiClient.delete(`/tmf-api/partnershipManagement/v4/hub/${id}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting hub:', error);
+      throw error;
+    }
+  }
+
+  async updateHub(id, data) {
+    try {
+      const response = await apiClient.patch(`/tmf-api/partnershipManagement/v4/hub/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating hub:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Partnership Specification endpoints
+   */
+  async listPartnershipSpecifications(params = {}) {
+    try {
+      const response = await apiClient.get('/tmf-api/partnershipManagement/v4/partnershipSpecification', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching partnership specifications:', error);
+      throw error;
+    }
+  }
+
+  async getPartnershipSpecification(id) {
+    try {
+      const response = await apiClient.get(`/tmf-api/partnershipManagement/v4/partnershipSpecification/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching partnership specification:', error);
+      throw error;
+    }
+  }
+
+  async createPartnershipSpecification(data) {
+    try {
+      const response = await apiClient.post('/tmf-api/partnershipManagement/v4/partnershipSpecification', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating partnership specification:', error);
+      throw error;
+    }
+  }
+
+  async updatePartnershipSpecification(id, data) {
+    try {
+      const response = await apiClient.patch(`/tmf-api/partnershipManagement/v4/partnershipSpecification/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating partnership specification:', error);
+      throw error;
+    }
+  }
+
+  async deletePartnershipSpecification(id) {
+    try {
+      await apiClient.delete(`/tmf-api/partnershipManagement/v4/partnershipSpecification/${id}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting partnership specification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Partnership endpoints
+   */
+  async listPartnerships(params = {}) {
+    try {
+      const response = await apiClient.get('/tmf-api/partnershipManagement/v4/partnership', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching partnerships:', error);
+      throw error;
+    }
+  }
+
+  async getPartnership(id) {
+    try {
+      const response = await apiClient.get(`/tmf-api/partnershipManagement/v4/partnership/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching partnership:', error);
+      throw error;
+    }
+  }
+
+  async createPartnership(data) {
+    try {
+      const response = await apiClient.post('/tmf-api/partnershipManagement/v4/partnership', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating partnership:', error);
+      throw error;
+    }
+  }
+
+  async updatePartnership(id, data) {
+    try {
+      const response = await apiClient.patch(`/tmf-api/partnershipManagement/v4/partnership/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating partnership:', error);
+      throw error;
+    }
+  }
+
+  async deletePartnership(id) {
+    try {
+      await apiClient.delete(`/tmf-api/partnershipManagement/v4/partnership/${id}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting partnership:', error);
+      throw error;
+    }
+  }
 }
 
 export default new PartnerManagementService();

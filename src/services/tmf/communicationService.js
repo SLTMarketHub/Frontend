@@ -1,5 +1,5 @@
-// TMF667 - Communication Management
-import api from '../api';
+// TMF681 - Communication Management API
+import { apiClient, BASE_URL } from '../authService';
 
 class CommunicationService {
   /**
@@ -18,7 +18,7 @@ class CommunicationService {
     } = notificationData;
 
     try {
-      const response = await api.post('/communicationManagement/v4/communication', {
+      const response = await apiClient.post('/tmf-api/communicationManagement/v4/communicationMessage', {
         sender: {
           id: 'admin',
           name: 'Platform Admin',
@@ -56,7 +56,7 @@ class CommunicationService {
    */
   async getTemplates(params = {}) {
     try {
-      const response = await api.get('/communicationManagement/v4/template', { params });
+      const response = await apiClient.get('/tmf-api/communicationManagement/v4/communicationMessage', { params });
       return response.data;
     } catch (error) {
       console.error('Error fetching templates:', error);
@@ -73,10 +73,10 @@ class CommunicationService {
     try {
       const method = templateData.id ? 'patch' : 'post';
       const url = templateData.id 
-        ? `/communicationManagement/v4/template/${templateData.id}`
-        : '/communicationManagement/v4/template';
+        ? `/tmf-api/communicationManagement/v4/communicationMessage/${templateData.id}`
+        : '/tmf-api/communicationManagement/v4/communicationMessage';
       
-      const response = await api[method](url, {
+      const response = await apiClient[method](url, {
         name: templateData.name,
         type: templateData.type,
         channel: templateData.channel,
@@ -100,7 +100,7 @@ class CommunicationService {
    */
   async deleteTemplate(templateId) {
     try {
-      await api.delete(`/communicationManagement/v4/template/${templateId}`);
+      await apiClient.delete(`/tmf-api/communicationManagement/v4/communicationMessage/${templateId}`);
       return { success: true };
     } catch (error) {
       console.error('Error deleting template:', error);
@@ -133,7 +133,7 @@ class CommunicationService {
     });
 
     try {
-      const response = await api.get(`/communicationManagement/v4/communication?${queryParams}`);
+      const response = await apiClient.get(`/tmf-api/communicationManagement/v4/communicationMessage?${queryParams}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching communication history:', error);
@@ -148,7 +148,7 @@ class CommunicationService {
    */
   async sendBulkCampaign(campaignData) {
     try {
-      const response = await api.post('/communicationManagement/v4/campaign', {
+      const response = await apiClient.post('/tmf-api/communicationManagement/v4/hub', {
         name: campaignData.name,
         type: 'bulk_email',
         targetAudience: campaignData.audience,
@@ -172,7 +172,7 @@ class CommunicationService {
    */
   async getCampaignStats(campaignId) {
     try {
-      const response = await api.get(`/communicationManagement/v4/campaign/${campaignId}/statistics`);
+      const response = await apiClient.get(`/tmf-api/communicationManagement/v4/hub/${campaignId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching campaign stats:', error);
@@ -314,6 +314,127 @@ class CommunicationService {
       limit: 20,
       offset: 0
     };
+  }
+
+  /**
+   * List all communication messages
+   * @param {Object} params - Query parameters
+   * @returns {Promise} Message list
+   */
+  async listMessages(params = {}) {
+    try {
+      const response = await apiClient.get('/tmf-api/communicationManagement/v4/communicationMessage', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      return this.getMockCommunicationHistory();
+    }
+  }
+
+  /**
+   * Get specific communication message
+   * @param {string} messageId - Message ID
+   * @returns {Promise} Message details
+   */
+  async getMessage(messageId) {
+    try {
+      const response = await apiClient.get(`/tmf-api/communicationManagement/v4/communicationMessage/${messageId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching message:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create new communication message
+   * @param {Object} messageData - Message data
+   * @returns {Promise} Created message
+   */
+  async createMessage(messageData) {
+    try {
+      const response = await apiClient.post('/tmf-api/communicationManagement/v4/communicationMessage', messageData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating message:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update communication message
+   * @param {string} messageId - Message ID
+   * @param {Object} messageData - Message data to update
+   * @returns {Promise} Updated message
+   */
+  async patchMessage(messageId, messageData) {
+    try {
+      const response = await apiClient.patch(`/tmf-api/communicationManagement/v4/communicationMessage/${messageId}`, messageData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating message:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete communication message
+   * @param {string} messageId - Message ID
+   * @returns {Promise} Deletion result
+   */
+  async deleteMessage(messageId) {
+    try {
+      await apiClient.delete(`/tmf-api/communicationManagement/v4/communicationMessage/${messageId}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send message immediately
+   * @param {string} messageId - Message ID to send
+   * @returns {Promise} Send result
+   */
+  async sendMessageNow(messageId) {
+    try {
+      const response = await apiClient.post(`/tmf-api/communicationManagement/v4/communicationMessage/${messageId}/send`);
+      return response.data;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Register hub for notifications
+   * @param {Object} hubData - Hub registration data
+   * @returns {Promise} Registration result
+   */
+  async registerHub(hubData) {
+    try {
+      const response = await apiClient.post('/tmf-api/communicationManagement/v4/hub', hubData);
+      return response.data;
+    } catch (error) {
+      console.error('Error registering hub:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unregister hub
+   * @param {string} hubId - Hub ID
+   * @returns {Promise} Unregistration result
+   */
+  async unregisterHub(hubId) {
+    try {
+      await apiClient.delete(`/tmf-api/communicationManagement/v4/hub/${hubId}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error unregistering hub:', error);
+      throw error;
+    }
   }
 }
 

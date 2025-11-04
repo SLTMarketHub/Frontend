@@ -174,7 +174,7 @@ class ProductCatalogService {
    */
   async bulkUpdateProducts(productIds, updates) {
     try {
-      const response = await api.post('/productCatalogManagement/v4/productOffering/bulk', {
+      const response = await apiClient.post(`${PRODUCT_API}/productOffering/bulk`, {
         productIds,
         updates
       });
@@ -197,7 +197,7 @@ class ProductCatalogService {
    */
   async deleteProduct(productId) {
     try {
-      await api.delete(`/productCatalogManagement/v4/productOffering/${productId}`);
+      await apiClient.delete(`${PRODUCT_API}/productOffering/${productId}`);
       return { success: true };
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -211,7 +211,7 @@ class ProductCatalogService {
    */
   async getCategories() {
     try {
-      const response = await api.get('/productCatalogManagement/v4/category');
+      const response = await apiClient.get(`${PRODUCT_API}/category`);
       return response.data;
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -234,7 +234,7 @@ class ProductCatalogService {
    */
   async getProductStats() {
     try {
-      const response = await api.get('/productCatalogManagement/v4/productOffering/statistics');
+      const response = await apiClient.get(`${PRODUCT_API}/productOffering/statistics`);
       return response.data;
     } catch (error) {
       console.error('Error fetching product stats:', error);
@@ -256,7 +256,7 @@ class ProductCatalogService {
    */
   async getFlaggedProducts() {
     try {
-      const response = await api.get('/productCatalogManagement/v4/productOffering?lifecycleStatus=flagged');
+      const response = await apiClient.get(`${PRODUCT_API}/productOffering`, { params: { lifecycleStatus: 'flagged' } });
       return response.data;
     } catch (error) {
       console.error('Error fetching flagged products:', error);
