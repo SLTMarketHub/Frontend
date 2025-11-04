@@ -7,14 +7,8 @@ import Modal from '../../components/seller/Modal';
 import { formatDate, formatPercentage, getStatusColor } from '../../utils/seller/formatters';
 import toast from 'react-hot-toast';
 
-const mockPromotions = [
-  { id: '1', name: 'Summer Sale', type: 'percentage', value: 20, code: 'SUMMER20', startDate: '2024-06-01T00:00:00Z', endDate: '2024-08-31T23:59:59Z', usageLimit: 1000, usageCount: 245, status: 'active', minOrderValue: 50 },
-  { id: '2', name: 'Free Shipping Weekend', type: 'free_shipping', value: 0, code: 'FREESHIP', startDate: '2024-01-15T00:00:00Z', endDate: '2024-01-17T23:59:59Z', usageCount: 156, status: 'expired' },
-  { id: '3', name: 'New Customer Discount', type: 'fixed', value: 15, code: 'WELCOME15', startDate: '2024-01-01T00:00:00Z', endDate: '2024-12-31T23:59:59Z', usageLimit: 500, usageCount: 89, status: 'active', minOrderValue: 30 },
-];
-
 const Promotions = () => {
-  const [promotions, setPromotions] = useState(mockPromotions);
+  const [promotions, setPromotions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
