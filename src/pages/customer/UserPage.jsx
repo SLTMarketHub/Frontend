@@ -47,7 +47,7 @@ const UserPage = () => {
   };
 
   const ViewOrdersBtnClick = () => {
-    window.location.href = "/orders";
+    window.location.href = `/user/${userDetails.id}/orders`;
   };
 
   return (
