@@ -41,22 +41,23 @@ const GoogleSuccess = () => {
         }
     }, [location, navigate, setAuthUser]);
 
-    const completeGoogleSignup = async () => {
-        if (!googleUser) return;
-        try {
-            setLoading(true);
-            await axios.post(`${backendUrl}/google/complete-signup`, {
-                email: googleUser.email,
-                name: googleUser.name,
-                role: "Customer",
-            });
-            navigate("/dashboard");
-        } catch (err) {
-            console.error("Google signup failed", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+const completeGoogleSignup = async () => {
+    if (!googleUser) return;
+    try {
+        setLoading(true);
+        await axios.post(`${backendUrl}/google/complete-signup`, {
+            email: googleUser.email,
+            name: googleUser.name,
+            role: "Customer",
+        });
+        navigate("/dashboard");
+    } catch (err) {
+        console.error("Google signup failed", err);
+    } finally {
+        setLoading(false);
+    }
+};
+
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
