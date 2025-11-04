@@ -38,6 +38,10 @@ const UserPage = () => {
     setPasswordMatch(updated.new === updated.repeat);
   };
 
+    const ViewOrdersBtnClick = () => {
+        window.location.href = `/user/12345/orders`;
+    };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
@@ -96,7 +100,7 @@ const UserPage = () => {
                   <p className="text-sm text-gray-600">Total: LKR 4,200.00</p>
                 </li>
               </ul>
-              <button className="mt-4 text-blue-600 hover:underline font-medium">
+              <button onClick={ViewOrdersBtnClick}  className="mt-4 text-blue-600 hover:underline font-medium cursor-pointer">
                 View All Orders →
               </button>
             </div>

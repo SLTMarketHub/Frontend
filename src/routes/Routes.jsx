@@ -6,6 +6,7 @@ import ProductPage from "../pages/customer/ProductPage.jsx";
 import CartPage from "../pages/customer/CartPage.jsx";
 import CheckoutPage from "../components/customer/cart/CheckoutPage.jsx";
 import UserPage from "../pages/customer/UserPage.jsx";
+import OrdersPage from "../pages/customer/OrdersPage.jsx";
 
 const router = createBrowserRouter([
   {
@@ -23,6 +24,10 @@ const router = createBrowserRouter([
   {
     path: "/user/:id",
     element: <UserPage />,
+  },
+  {
+    path: "/user/:id/orders",
+    element: <OrdersPage />,
   },
   {
     path: "*",
