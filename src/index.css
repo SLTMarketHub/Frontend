@@ -42,3 +42,7 @@ button.primary {
 }
 
 
+@import "tailwindcss";
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

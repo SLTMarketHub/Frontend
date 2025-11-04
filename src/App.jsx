@@ -21,6 +21,9 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 
+import './App.css'
+
+
 function App() {
     return (
         <Routes>
