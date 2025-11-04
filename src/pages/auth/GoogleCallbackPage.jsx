@@ -11,35 +11,53 @@ const GoogleCallback = () => {
         const params = new URLSearchParams(window.location.search);
         const token = params.get("token");
         const username = params.get("username");
+        const roleFromUrl = params.get("role"); // e.g. ?role=seller or ?role=customer
 
         if (token && username) {
             const decoded = jwtDecode(token);
 
+            // Role detection (prefer decoded token → then URL param → default customer)
+            const userRole =
+                decoded.role?.toLowerCase() ||
+                roleFromUrl?.toLowerCase() ||
+                "customer";
+
+            // Save user in context
             setAuthUser({
                 id: decoded.id,
-                name: decoded.username || "",
+                name: decoded.username || username || "",
                 email: decoded.email || "",
-                role: "customer",
+                role: userRole,
                 authProvider: "google",
                 token,
             });
 
+            // Persist in local storage
             localStorage.setItem("token", token);
             localStorage.setItem(
                 "user",
                 JSON.stringify({
                     id: decoded.id,
-                    username: decoded.username,
+                    username: decoded.username || username,
                     email: decoded.email,
-                    role: "Customer",
+                    role: userRole,
                 })
             );
 
-            navigate("/home");
+            // Redirect based on role
+            // if (userRole === "seller") {
+            //     navigate("/dashboard");
+            // } else {
+            //     navigate("/home");
+            // }
         }
     }, [setAuthUser, navigate]);
 
-    return <div>Logging you in with Google...</div>;
+    return (
+        <div className="flex items-center justify-center min-h-screen text-lg font-semibold text-gray-700">
+            Logging you in with Google...
+        </div>
+    );
 };
 
 export default GoogleCallback;
