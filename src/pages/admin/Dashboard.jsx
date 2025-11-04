@@ -42,10 +42,14 @@ import Card, { StatsCard } from '../../components/common/Card';
 import DataTable from '../../components/common/DataTable';
 import { LoadingState, SkeletonCard } from '../../components/common/LoadingSpinner';
 import { formatCurrency, formatNumber, getRelativeTime, getStatusColor } from '../../utils/formatters';
-import orderService from '../../services/tmf/orderService';
-import customerService from '../../services/tmf/customerService';
-import partnerService from '../../services/tmf/partnerService';
-import productCatalogService from '../../services/tmf/productCatalogService';
+import { 
+  tmf622AdminService,
+  tmf629AdminService,
+  tmf668AdminService,
+  tmf620AdminService,
+  tmf678AdminService,
+  tmf681AdminService 
+} from '../../services/admin';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -77,6 +81,9 @@ const Dashboard = () => {
     { id: 5, name: 'Sony WH-1000XM5', stock: 15, category: 'Electronics', sales: 98, revenue: 25000 },
   ]);
   const [performanceData, setPerformanceData] = useState(null);
+  
+  // Chart colors - SLT theme
+  const COLORS = ['#003366', '#0066CC', '#00ACC1', '#008B8B', '#00A651', '#4CAF50'];
 
   useEffect(() => {
     fetchDashboardData();
@@ -85,60 +92,112 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch all statistics in parallel
-      const [orderData, customerData, sellerData, productData] = await Promise.all([
-        orderService.getOrderStats({ period: 'month' }),
-        customerService.getCustomerStats(),
-        partnerService.getSellerStats(),
-        productCatalogService.getProductStats()
+      // Fetch all statistics in parallel using admin services
+      const [orderData, customerData, partnershipData, productData, billingData, recentMessages] = await Promise.all([
+        tmf622AdminService.getOrderStatistics({ period: 'month' }),
+        tmf629AdminService.getCustomerStatistics(),
+        tmf668AdminService.getPartnershipStatistics(),
+        tmf620AdminService.getProductStats(),
+        tmf678AdminService.getBillingStatistics(),
+        tmf681AdminService.getCommunicationStatistics()
       ]);
+
+      // Fetch recent orders
+      const ordersResponse = await tmf622AdminService.listProductOrders({ limit: 5, sort: '-createdDate' });
+      if (ordersResponse && ordersResponse.length > 0) {
+        const formattedOrders = ordersResponse.map(order => ({
+          id: order.id || `#ORD-${order.externalId || Math.random().toString(36).substr(2, 9)}`,
+          customer: order.relatedParty?.[0]?.name || 'Unknown Customer',
+          amount: order.totalOrderPrice?.[0]?.price?.value || 0,
+          status: order.state || 'pending',
+          date: new Date(order.orderDate || Date.now())
+        }));
+        setRecentOrders(formattedOrders);
+      }
+
+      // Fetch low stock products
+      const lowStockResponse = await tmf620AdminService.listProductOfferings({ 
+        'stock.lte': 20,
+        limit: 5 
+      });
+      if (lowStockResponse && lowStockResponse.length > 0) {
+        setLowStockProducts(lowStockResponse.map(p => ({
+          name: p.name,
+          stock: p.stock || 0,
+          category: p.category?.[0]?.name || 'Uncategorized'
+        })));
+      }
 
       setOrderStats(orderData);
       // Only update if we got real data from API
       if (orderData.ordersByDay && orderData.ordersByDay.length > 0) {
-        setSalesData(orderData.ordersByDay);
+        setSalesData(orderData.ordersByDay.map(day => ({
+          date: day.date,
+          revenue: day.revenue || day.totalAmount,
+          orders: day.count || day.orders
+        })));
       }
-      if (orderData.revenueByCategory && orderData.revenueByCategory.length > 0) {
-        setCategoryData(orderData.revenueByCategory);
+      if (orderData.topProducts && orderData.topProducts.length > 0) {
+        setTopProducts(orderData.topProducts.map((p, idx) => ({
+          id: idx + 1,
+          name: p.name,
+          stock: p.stock || Math.floor(Math.random() * 100),
+          category: p.category || 'General',
+          sales: p.orderCount || p.sales,
+          revenue: p.revenue
+        })));
       }
       
       setStats({
-        totalRevenue: orderData.totalRevenue || 125678900,
+        totalRevenue: orderData.totalRevenue || billingData.totalRevenue || 125678900,
         totalOrders: orderData.totalOrders || 3456,
         totalCustomers: customerData.totalCustomers || 1248,
         totalProducts: productData.totalProducts || 2456,
-        totalSellers: sellerData.totalSellers || 324,
-        activeSellers: sellerData.activeSellers || 298,
-        conversionRate: 3.8,
+        totalSellers: partnershipData.totalPartnerships || 324,
+        activeSellers: partnershipData.activePartnerships || 298,
+        conversionRate: customerData.conversionRate || 3.8,
         averageOrderValue: orderData.averageOrderValue || 36450,
         growth: {
-          revenue: 12.5,
-          orders: 8.2,
-          customers: 15.3,
-          products: 4.7
+          revenue: orderData.revenueGrowth || 12.5,
+          orders: orderData.orderGrowth || 8.2,
+          customers: customerData.customerGrowthRate || 15.3,
+          products: productData.productGrowth || 4.7
         }
       });
 
+      // Update performance metrics
       setPerformanceData({
-        fulfillmentRate: 97.8,
-        customerSatisfaction: 4.7,
-        avgResponseTime: 2.4,
-        returnRate: 1.8
+        fulfillmentRate: orderData.fulfillmentRate || 97.8,
+        customerSatisfaction: customerData.averageRating || 4.7,
+        avgResponseTime: recentMessages.averageDeliveryTime || 2.4,
+        returnRate: orderData.returnRate || 1.8
       });
+
+      // Update category data from order statistics
+      if (orderData.ordersByStatus) {
+        const categories = Object.keys(orderData.ordersByStatus).map((status, idx) => ({
+          name: status,
+          value: orderData.ordersByStatus[status],
+          sales: orderData.ordersByStatus[status],
+          fill: COLORS[idx % COLORS.length]
+        }));
+        setCategoryData(categories);
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      // Keep mock data on error
     } finally {
       setLoading(false);
     }
   };
 
-  const recentOrders = [
+  const [recentOrders, setRecentOrders] = useState([
     { id: '#ORD-2025-0234', customer: 'Kamal Perera', amount: 125000, status: 'pending', date: new Date('2025-03-18T10:30:00Z') },
     { id: '#ORD-2025-0233', customer: 'Nimal Silva', amount: 87500, status: 'confirmed', date: new Date('2025-03-18T09:15:00Z') },
     { id: '#ORD-2025-0232', customer: 'Saman Fernando', amount: 234000, status: 'shipped', date: new Date('2025-03-17T16:45:00Z') },
     { id: '#ORD-2025-0231', customer: 'Kumari Jayasinghe', amount: 56200, status: 'delivered', date: new Date('2025-03-17T14:20:00Z') },
     { id: '#ORD-2025-0230', customer: 'Ravi Mendis', amount: 145800, status: 'cancelled', date: new Date('2025-03-17T11:00:00Z') },
-  ];
+  ]);
 
   const recentActivity = [
     { type: 'order', message: 'New order received from Kamal Perera', time: new Date('2025-03-18T10:30:00Z'), icon: <ShoppingCart size={16} />, color: 'text-blue-600' },
@@ -148,14 +207,11 @@ const Dashboard = () => {
     { type: 'order', message: 'Order #ORD-2025-0230 cancelled', time: new Date('2025-03-17T17:00:00Z'), icon: <TrendingDown size={16} />, color: 'text-red-600' },
   ];
 
-  const lowStockProducts = [
+  const [lowStockProducts, setLowStockProducts] = useState([
     { name: 'Apple iPhone 15 Pro', stock: 12, category: 'Electronics' },
     { name: 'Dell XPS 15 Laptop', stock: 8, category: 'Computers' },
     { name: 'Sony WH-1000XM5', stock: 15, category: 'Electronics' },
-  ];
-
-  // Chart colors - SLT theme
-  const COLORS = ['#003366', '#0066CC', '#00ACC1', '#008B8B', '#00A651', '#4CAF50'];
+  ]);
   
   // Format data for pie chart
   const pieChartData = categoryData.map((item, index) => ({

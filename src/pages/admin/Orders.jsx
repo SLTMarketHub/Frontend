@@ -40,8 +40,7 @@ import Modal, { ConfirmModal } from '../../components/common/Modal';
 import { LoadingState } from '../../components/common/LoadingSpinner';
 import { formatCurrency, formatDate, getStatusColor, formatNumber, getRelativeTime } from '../../utils/formatters';
 import useToast from '../../hooks/useToast';
-import orderService from '../../services/tmf/orderService';
-import communicationService from '../../services/tmf/communicationService';
+import { tmf622AdminService, tmf681AdminService, tmf678AdminService } from '../../services/admin';
 import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
 
 const dummyOrders = [
@@ -82,21 +81,51 @@ export default function Orders() {
     setLoading(true);
     try {
       const params = {
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-        searchTerm: searchTerm || undefined
+        limit: 100,
+        offset: 0,
+        ...(statusFilter !== 'all' && { state: statusFilter }),
+        ...(dateFrom && { 'orderDate.gte': dateFrom }),
+        ...(dateTo && { 'orderDate.lte': dateTo }),
+        ...(searchTerm && { search: searchTerm })
       };
 
-      const [ordersData, statsData, disputesData] = await Promise.all([
-        orderService.listOrders(params),
-        orderService.getOrderStats({ period: 'month' }),
-        orderService.getDisputes()
+      const [ordersResponse, statsData] = await Promise.all([
+        tmf622AdminService.listProductOrders(params),
+        tmf622AdminService.getOrderStatistics({ period: 'month' })
       ]);
 
-      setOrders(ordersData.items || []);
+      // Format orders for display
+      const formattedOrders = ordersResponse.map(order => ({
+        id: order.id || `#ORD-${Math.random().toString(36).substr(2, 9)}`,
+        orderNumber: order.externalId || order.id,
+        customer: order.relatedParty?.find(p => p.role === 'customer')?.name || 'Unknown Customer',
+        customerId: order.relatedParty?.find(p => p.role === 'customer')?.id,
+        seller: order.relatedParty?.find(p => p.role === 'seller')?.name || 'Unknown Seller',
+        sellerId: order.relatedParty?.find(p => p.role === 'seller')?.id,
+        date: order.orderDate || new Date().toISOString(),
+        orderDate: order.orderDate || new Date().toISOString(),
+        status: order.state || 'pending',
+        amount: order.totalOrderPrice?.reduce((sum, price) => sum + (price.price?.value || 0), 0) || 0,
+        total: order.totalOrderPrice?.reduce((sum, price) => sum + (price.price?.value || 0), 0) || 0,
+        paymentStatus: order.payment?.[0]?.status || 'pending',
+        items: order.productOrderItem || [],
+        shippingAddress: order.deliveryAddress,
+        billingAddress: order.billingAddress
+      }));
+
+      setOrders(formattedOrders);
       setOrderStats(statsData);
-      setDisputes(disputesData.items || []);
+      
+      // Fetch disputes from cancelled orders
+      const cancelledOrders = await tmf622AdminService.listCancelProductOrders({ limit: 20 });
+      const disputedOrders = cancelledOrders.filter(o => o.cancellationReason?.includes('dispute'));
+      setDisputes(disputedOrders.map(d => ({
+        id: d.id,
+        orderId: d.productOrder?.id,
+        reason: d.cancellationReason,
+        date: d.requestedCancellationDate,
+        status: d.state
+      })));
     } catch (err) {
       console.error('Error fetching orders:', err);
       // Use mock data as fallback
@@ -115,20 +144,33 @@ export default function Orders() {
 
   const handleUpdateOrderStatus = async () => {
     try {
-      await orderService.updateOrderStatus(
-        selectedOrder.id,
-        statusUpdateData.status,
-        { reason: statusUpdateData.reason }
-      );
+      await tmf622AdminService.updateProductOrder(selectedOrder.id, {
+        state: statusUpdateData.status,
+        note: [{
+          text: statusUpdateData.reason,
+          date: new Date().toISOString(),
+          author: 'Admin'
+        }]
+      });
 
-      // Send notification
-      await communicationService.sendNotification({
-        recipients: [{ id: selectedOrder.customerId, name: selectedOrder.customer }],
-        type: 'order_status_update',
+      // Send notification using admin service
+      await tmf681AdminService.createMessage({
+        sender: {
+          id: 'admin',
+          name: 'Platform Admin',
+          '@type': 'Organization'
+        },
+        receiver: [{
+          id: selectedOrder.customerId,
+          name: selectedOrder.customer,
+          '@type': 'Individual'
+        }],
+        communicationType: 'order_status_update',
         subject: `Order ${selectedOrder.id} Status Update`,
-        message: `Your order status has been updated to ${statusUpdateData.status}`,
+        content: `Your order status has been updated to ${statusUpdateData.status}`,
         channel: ['email'],
-        priority: 'normal'
+        priority: 'normal',
+        status: 'pending'
       });
 
       success('Order status updated successfully');
@@ -141,30 +183,94 @@ export default function Orders() {
 
   const handleProcessRefund = async () => {
     try {
-      await orderService.processRefund(selectedOrder.id, refundData);
+      // Create a cancel order request for refund
+      await tmf622AdminService.createCancelProductOrder({
+        productOrder: {
+          id: selectedOrder.id,
+          href: `/productOrder/${selectedOrder.id}`
+        },
+        cancellationReason: refundData.reason,
+        requestedCancellationDate: new Date().toISOString(),
+        state: 'acknowledged',
+        '@type': 'CancelProductOrder'
+      });
+      
+      // Create a customer bill adjustment for refund
+      if (refundData.type === 'full') {
+        await tmf678AdminService.createCustomerBill({
+          billNo: `REFUND-${selectedOrder.id}`,
+          billDate: new Date().toISOString(),
+          amountDue: { value: -refundData.amount, unit: 'LKR' },
+          relatedParty: [{
+            id: selectedOrder.customerId,
+            name: selectedOrder.customer,
+            role: 'customer'
+          }],
+          billDocument: [{
+            name: 'Refund Document',
+            description: refundData.reason,
+            '@type': 'BillDocument'
+          }]
+        });
+      }
+      
       success('Refund processed successfully');
       setShowRefundModal(false);
       fetchOrders();
     } catch (err) {
+      console.error('Refund error:', err);
       showError('Failed to process refund');
     }
   };
 
   const handleResolveDispute = async () => {
     try {
-      await orderService.resolveDispute(selectedDispute.id, disputeResolution);
+      // Update the order status based on dispute resolution
+      await tmf622AdminService.updateProductOrder(selectedDispute.orderId, {
+        state: disputeResolution.decision === 'refund' ? 'cancelled' : 'completed',
+        note: [{
+          text: `Dispute resolved: ${disputeResolution.notes}`,
+          date: new Date().toISOString(),
+          author: 'Admin'
+        }]
+      });
+      
+      // Process refund if needed
+      if (disputeResolution.decision === 'refund' && disputeResolution.refundAmount > 0) {
+        await tmf678AdminService.createCustomerBill({
+          billNo: `DISPUTE-REFUND-${selectedDispute.id}`,
+          billDate: new Date().toISOString(),
+          amountDue: { value: -disputeResolution.refundAmount, unit: 'LKR' },
+          relatedParty: [{
+            id: selectedDispute.customerId,
+            name: selectedDispute.customerName,
+            role: 'customer'
+          }]
+        });
+      }
+      
       success('Dispute resolved successfully');
       setShowDisputeModal(false);
       fetchOrders();
     } catch (err) {
+      console.error('Dispute resolution error:', err);
       showError('Failed to resolve dispute');
     }
   };
 
   const handleViewDetails = async (order) => {
     try {
-      const detailedOrder = await orderService.getOrder(order.id);
-      setSelectedOrder(detailedOrder);
+      const detailedOrder = await tmf622AdminService.getProductOrder(order.id);
+      // Format the detailed order for display
+      const formattedOrder = {
+        ...order,
+        ...detailedOrder,
+        customer: detailedOrder.relatedParty?.find(p => p.role === 'customer')?.name || order.customer,
+        seller: detailedOrder.relatedParty?.find(p => p.role === 'seller')?.name || order.seller,
+        items: detailedOrder.productOrderItem || order.items,
+        total: detailedOrder.totalOrderPrice?.reduce((sum, price) => sum + (price.price?.value || 0), 0) || order.amount
+      };
+      setSelectedOrder(formattedOrder);
       setShowDetailsModal(true);
     } catch (err) {
       // Use the basic order data if detailed fetch fails

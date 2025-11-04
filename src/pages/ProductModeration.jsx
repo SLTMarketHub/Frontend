@@ -24,8 +24,7 @@ import Modal, { ConfirmModal } from '../components/common/Modal';
 import { LoadingState } from '../components/common/LoadingSpinner';
 import { formatDate, getStatusColor, formatCurrency, getRelativeTime } from '../utils/formatters';
 import useToast from '../hooks/useToast';
-import productCatalogService from '../services/tmf/productCatalogService';
-import communicationService from '../services/tmf/communicationService';
+import { tmf620AdminService, tmf681AdminService } from '../services/admin';
 import { exportToCSV } from '../utils/exportUtils';
 
 const dummyProducts = [
@@ -65,24 +64,54 @@ export default function ProductModeration() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const status = activeTab === 'flagged' ? 'flagged' : 
-                    statusFilter !== 'all' ? statusFilter : undefined;
-
       const params = {
-        status,
-        category: categoryFilter !== 'all' ? categoryFilter : undefined,
-        searchTerm: searchTerm || undefined
+        limit: 100,
+        offset: 0,
+        ...(activeTab === 'flagged' && { lifecycleStatus: 'flagged' }),
+        ...(statusFilter !== 'all' && activeTab !== 'flagged' && { lifecycleStatus: statusFilter }),
+        ...(categoryFilter !== 'all' && { 'category.name': categoryFilter }),
+        ...(searchTerm && { name: searchTerm })
       };
 
-      const [productsData, statsData, flaggedData] = await Promise.all([
-        productCatalogService.listProducts(params),
-        productCatalogService.getProductStats(),
-        flagFilter === 'flagged' ? productCatalogService.getFlaggedProducts() : Promise.resolve({ items: [] })
+      const [productsResponse, statsData] = await Promise.all([
+        tmf620AdminService.listProductOfferings(params),
+        tmf620AdminService.getProductStats()
       ]);
 
-      const allProducts = flagFilter === 'flagged' ? flaggedData.items : productsData.items || [];
-      setProducts(allProducts);
-      setStats(statsData);
+      // Format products for display
+      const formattedProducts = (Array.isArray(productsResponse) ? productsResponse : productsResponse.items || []).map(p => ({
+        id: p.id,
+        name: p.name || 'Unknown Product',
+        seller: p.relatedParty?.find(rp => rp.role === 'seller')?.name || 'Unknown Seller',
+        sellerId: p.relatedParty?.find(rp => rp.role === 'seller')?.id,
+        status: p.lifecycleStatus || 'pending',
+        category: p.category?.[0]?.name || 'Uncategorized',
+        price: p.productOfferingPrice?.[0]?.price?.value || 0,
+        submittedAt: p.validFor?.startDateTime || p.createdDate || new Date().toISOString(),
+        image: p.attachment?.[0]?.href || 'https://via.placeholder.com/50',
+        flagged: p.lifecycleStatus === 'flagged' || p.characteristic?.find(c => c.name === 'flagged')?.value || false,
+        reports: p.characteristic?.find(c => c.name === 'reportCount')?.value || 0,
+        description: p.description,
+        specifications: p.productSpecification,
+        stock: p.characteristic?.find(c => c.name === 'stock')?.value || 0
+      }));
+
+      // Filter flagged products if needed
+      let finalProducts = formattedProducts;
+      if (flagFilter === 'flagged') {
+        finalProducts = formattedProducts.filter(p => p.flagged);
+      } else if (flagFilter === 'not_flagged') {
+        finalProducts = formattedProducts.filter(p => !p.flagged);
+      }
+
+      setProducts(finalProducts);
+      setStats(statsData || {
+        totalProducts: finalProducts.length,
+        pendingApproval: finalProducts.filter(p => p.status === 'pending').length,
+        flaggedProducts: finalProducts.filter(p => p.flagged).length,
+        activeProducts: finalProducts.filter(p => p.status === 'active' || p.status === 'approved').length,
+        rejectedProducts: finalProducts.filter(p => p.status === 'rejected').length
+      });
     } catch (err) {
       console.error('Error fetching products:', err);
       // Use mock data as fallback
@@ -101,32 +130,58 @@ export default function ProductModeration() {
 
   const fetchCategories = async () => {
     try {
-      const categoriesData = await productCatalogService.getCategories();
-      setCategories(categoriesData);
+      const categoriesData = await tmf620AdminService.listCategories();
+      setCategories(Array.isArray(categoriesData) ? categoriesData : categoriesData.items || []);
     } catch (err) {
       console.error('Error fetching categories:', err);
+      // Use default categories as fallback
+      setCategories([
+        { id: '1', name: 'Electronics' },
+        { id: '2', name: 'Fashion' },
+        { id: '3', name: 'Home & Garden' },
+        { id: '4', name: 'Sports & Outdoors' },
+        { id: '5', name: 'Books & Media' }
+      ]);
     }
   };
 
   const handleApprove = async (id) => {
     try {
-      await productCatalogService.moderateProduct(id, 'active');
+      await tmf620AdminService.updateProductOffering(id, {
+        lifecycleStatus: 'active',
+        note: [{
+          text: 'Product approved by admin',
+          date: new Date().toISOString(),
+          author: 'Admin'
+        }]
+      });
       
       const product = products.find(p => p.id === id);
       if (product && product.sellerId) {
-        await communicationService.sendNotification({
-          recipients: [{ id: product.sellerId, name: product.seller }],
-          type: 'product_approval',
+        await tmf681AdminService.createMessage({
+          sender: {
+            id: 'admin',
+            name: 'Platform Admin',
+            '@type': 'Organization'
+          },
+          receiver: [{
+            id: product.sellerId,
+            name: product.seller,
+            '@type': 'Organization'
+          }],
+          communicationType: 'product_approval',
           subject: 'Product Approved',
-          message: `Your product "${product.name}" has been approved and is now live on the marketplace.`,
+          content: `Your product "${product.name}" has been approved and is now live on the marketplace.`,
           channel: ['email'],
-          priority: 'normal'
+          priority: 'normal',
+          status: 'pending'
         });
       }
 
       success('Product approved successfully');
       fetchProducts();
     } catch (err) {
+      console.error('Error approving product:', err);
       error('Failed to approve product');
     }
   };
@@ -135,16 +190,33 @@ export default function ProductModeration() {
     if (!selectedProduct) return;
     
     try {
-      await productCatalogService.moderateProduct(selectedProduct.id, 'rejected', rejectionReason);
+      await tmf620AdminService.updateProductOffering(selectedProduct.id, {
+        lifecycleStatus: 'rejected',
+        note: [{
+          text: `Product rejected: ${rejectionReason}`,
+          date: new Date().toISOString(),
+          author: 'Admin'
+        }]
+      });
       
       if (selectedProduct.sellerId) {
-        await communicationService.sendNotification({
-          recipients: [{ id: selectedProduct.sellerId, name: selectedProduct.seller }],
-          type: 'product_rejection',
+        await tmf681AdminService.createMessage({
+          sender: {
+            id: 'admin',
+            name: 'Platform Admin',
+            '@type': 'Organization'
+          },
+          receiver: [{
+            id: selectedProduct.sellerId,
+            name: selectedProduct.seller,
+            '@type': 'Organization'
+          }],
+          communicationType: 'product_rejection',
           subject: 'Product Review Update',
-          message: `Your product "${selectedProduct.name}" has been reviewed. ${rejectionReason}`,
+          content: `Your product "${selectedProduct.name}" has been reviewed. ${rejectionReason}`,
           channel: ['email'],
-          priority: 'normal'
+          priority: 'normal',
+          status: 'pending'
         });
       }
 
@@ -168,20 +240,35 @@ export default function ProductModeration() {
     setShowBulkConfirm(true);
   };
 
-  const confirmBulkAction = () => {
-    if (bulkAction === 'approve') {
-      setProducts(products.map(p => 
-        selectedProducts.includes(p.id) ? { ...p, status: 'approved' } : p
-      ));
-      success(`${selectedProducts.length} products approved successfully!`);
-    } else if (bulkAction === 'reject') {
-      setProducts(products.map(p => 
-        selectedProducts.includes(p.id) ? { ...p, status: 'rejected' } : p
-      ));
-      success(`${selectedProducts.length} products rejected successfully!`);
-    } else if (bulkAction === 'delete') {
-      setProducts(products.filter(p => !selectedProducts.includes(p.id)));
-      success(`${selectedProducts.length} products deleted successfully!`);
+  const confirmBulkAction = async () => {
+    try {
+      if (bulkAction === 'approve') {
+        await tmf620AdminService.bulkUpdateProducts(selectedProducts, {
+          lifecycleStatus: 'active'
+        });
+        setProducts(products.map(p => 
+          selectedProducts.includes(p.id) ? { ...p, status: 'active' } : p
+        ));
+        success(`${selectedProducts.length} products approved successfully!`);
+      } else if (bulkAction === 'reject') {
+        await tmf620AdminService.bulkUpdateProducts(selectedProducts, {
+          lifecycleStatus: 'rejected'
+        });
+        setProducts(products.map(p => 
+          selectedProducts.includes(p.id) ? { ...p, status: 'rejected' } : p
+        ));
+        success(`${selectedProducts.length} products rejected successfully!`);
+      } else if (bulkAction === 'delete') {
+        // Delete products one by one
+        await Promise.all(
+          selectedProducts.map(id => tmf620AdminService.deleteProductOffering(id))
+        );
+        setProducts(products.filter(p => !selectedProducts.includes(p.id)));
+        success(`${selectedProducts.length} products deleted successfully!`);
+      }
+    } catch (err) {
+      console.error('Error performing bulk action:', err);
+      error('Failed to perform bulk action');
     }
     setSelectedProducts([]);
     setShowBulkConfirm(false);

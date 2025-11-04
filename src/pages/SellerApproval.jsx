@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserCheck, UserX, Store, Mail, Calendar, Eye, Star, ShoppingCart, TrendingUp, Package } from 'lucide-react';
 import Card, { StatsCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -6,6 +6,7 @@ import DataTable from '../components/common/DataTable';
 import Modal from '../components/common/Modal';
 import { formatDate, getStatusColor, formatCurrency, formatNumber } from '../utils/formatters';
 import useToast from '../hooks/useToast';
+import { tmf668AdminService, tmf681AdminService } from '../services/admin';
 
 const dummySellers = [
   { id: 1, name: "John Doe", email: "john@example.com", status: "pending", storeName: "John's Electronics", phone: "+94771234567", appliedAt: "2025-03-10", revenue: 0, totalOrders: 0, rating: 0, productsListed: 0 },
@@ -19,27 +20,141 @@ const dummySellers = [
 ];
 
 export default function SellerApproval() {
-  const [sellers, setSellers] = useState(dummySellers);
+  const [loading, setLoading] = useState(true);
+  const [sellers, setSellers] = useState([]);
   const [selectedSeller, setSelectedSeller] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const { success } = useToast();
+  const { success, error } = useToast();
 
-  const handleApprove = (id) => {
-    setSellers(
-      sellers.map((seller) =>
-        seller.id === id ? { ...seller, status: "approved" } : seller
-      )
-    );
-    success('Seller approved successfully!');
+  useEffect(() => {
+    fetchSellers();
+  }, []);
+
+  const fetchSellers = async () => {
+    setLoading(true);
+    try {
+      const partnershipsResponse = await tmf668AdminService.listPartnerships({ limit: 100 });
+      
+      // Format partnerships as sellers
+      const formattedSellers = (Array.isArray(partnershipsResponse) ? partnershipsResponse : partnershipsResponse.items || []).map(p => ({
+        id: p.id,
+        name: p.name || 'Unknown Seller',
+        email: p.contact?.contactMedium?.find(m => m.mediumType === 'email')?.characteristic?.emailAddress || 'N/A',
+        phone: p.contact?.contactMedium?.find(m => m.mediumType === 'phone')?.characteristic?.phoneNumber || 'N/A',
+        status: p.status || 'pending',
+        storeName: p.organization?.tradingName || p.name || 'Unknown Store',
+        appliedAt: p.agreementPeriod?.startDateTime || p.createdDate || new Date().toISOString(),
+        revenue: p.characteristic?.find(c => c.name === 'totalRevenue')?.value || 0,
+        totalOrders: p.characteristic?.find(c => c.name === 'totalOrders')?.value || 0,
+        rating: p.characteristic?.find(c => c.name === 'rating')?.value || 0,
+        productsListed: p.characteristic?.find(c => c.name === 'totalProducts')?.value || 0,
+        documents: p.attachment || [],
+        address: p.contact?.postalAddress?.[0]?.formattedAddress || 'N/A',
+        businessType: p.partnershipType?.name || 'Individual'
+      }));
+      
+      setSellers(formattedSellers);
+    } catch (err) {
+      console.error('Error fetching sellers:', err);
+      // Use mock data as fallback
+      setSellers(dummySellers);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReject = (id) => {
-    setSellers(
-      sellers.map((seller) =>
-        seller.id === id ? { ...seller, status: "rejected" } : seller
-      )
-    );
-    success('Seller rejected successfully!');
+  const handleApprove = async (id) => {
+    try {
+      const seller = sellers.find(s => s.id === id);
+      
+      await tmf668AdminService.updatePartnership(id, {
+        status: 'active',
+        note: [{
+          text: 'Seller application approved by admin',
+          date: new Date().toISOString(),
+          author: 'Admin'
+        }]
+      });
+      
+      // Send approval notification
+      if (seller) {
+        await tmf681AdminService.createMessage({
+          sender: {
+            id: 'admin',
+            name: 'Platform Admin',
+            '@type': 'Organization'
+          },
+          receiver: [{
+            id: seller.id,
+            name: seller.name,
+            '@type': 'Organization'
+          }],
+          communicationType: 'seller_approval',
+          subject: 'Seller Application Approved',
+          content: `Congratulations! Your seller application for "${seller.storeName}" has been approved. You can now start listing products on our marketplace.`,
+          channel: ['email'],
+          priority: 'high',
+          status: 'pending'
+        });
+      }
+      
+      setSellers(
+        sellers.map((seller) =>
+          seller.id === id ? { ...seller, status: 'active' } : seller
+        )
+      );
+      success('Seller approved successfully!');
+    } catch (err) {
+      console.error('Error approving seller:', err);
+      error('Failed to approve seller');
+    }
+  };
+
+  const handleReject = async (id) => {
+    try {
+      const seller = sellers.find(s => s.id === id);
+      
+      await tmf668AdminService.updatePartnership(id, {
+        status: 'rejected',
+        note: [{
+          text: 'Seller application rejected by admin',
+          date: new Date().toISOString(),
+          author: 'Admin'
+        }]
+      });
+      
+      // Send rejection notification
+      if (seller) {
+        await tmf681AdminService.createMessage({
+          sender: {
+            id: 'admin',
+            name: 'Platform Admin',
+            '@type': 'Organization'
+          },
+          receiver: [{
+            id: seller.id,
+            name: seller.name,
+            '@type': 'Organization'
+          }],
+          communicationType: 'seller_rejection',
+          subject: 'Seller Application Update',
+          content: `We regret to inform you that your seller application for "${seller.storeName}" has been reviewed and cannot be approved at this time. Please contact support for more information.`,
+          channel: ['email'],
+          priority: 'normal',
+          status: 'pending'
+        });
+      }
+      
+      setSellers(
+        sellers.map((seller) =>
+          seller.id === id ? { ...seller, status: 'rejected' } : seller
+        )
+      );
+      success('Seller rejected successfully!');
+    } catch (err) {
+      console.error('Error rejecting seller:', err);
+      error('Failed to reject seller');
+    }
   };
 
   const handleViewDetails = (seller) => {
@@ -49,7 +164,7 @@ export default function SellerApproval() {
 
   const stats = {
     pending: sellers.filter(s => s.status === 'pending').length,
-    approved: sellers.filter(s => s.status === 'approved').length,
+    approved: sellers.filter(s => s.status === 'active' || s.status === 'approved').length,
     rejected: sellers.filter(s => s.status === 'rejected').length,
   };
 
