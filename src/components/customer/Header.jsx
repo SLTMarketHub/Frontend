@@ -39,15 +39,37 @@ export default function Header() {
     return (
         <div className="flex items-center w-full p-4 bg-gradient-to-r from-[#0F55A7] to-[#4DB848] text-white font-bold justify-between relative">
             {/* Logo */}
-            <div
-                className="text-left pr-4 justify-center mt-auto mb-auto text-[26px] cursor-pointer"
-                onClick={() => navigate("/home")}
-            >
-                MarketHub
+            <div className="align-left pr-4 justify-center mt-auto mb-auto text-[26px]">
+                <a href="/home">
+                    <h1 className="ml-4">MarketHub</h1>
+                </a>
             </div>
 
+            {/* Search Bar */}
+            {/* <div className="align-center justify-center mt-auto mb-auto flex">
+                <input
+                    type="text"
+                    placeholder="Search"
+                    className="rounded-l-[20px] h-auto px-4 py-2 text-black bg-[#fafafa] w-80 placeholder:text-[#b1b1b1] focus:outline-none font-semibold"
+                />
+                <button className="bg-white text-blue-900 rounded-r-[20px] p-4 cursor-pointer">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="size-6"
+                    >
+                        <path
+                            fillRule="evenodd"
+                            d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z"
+                            clipRule="evenodd"
+                        />
+                    </svg>
+                </button>
+            </div> */}
+
             {/* Right Section */}
-            <div className="flex space-x-8 items-center relative">
+            <div className="flex space-x-8 items-center relative mr-4">
                 {/* Notifications */}
                 <div className="cursor-pointer">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
@@ -57,7 +79,7 @@ export default function Header() {
                             clipRule="evenodd"
                         />
                     </svg>
-                </div>
+                </div> */}
 
                 {/* User Section */}
                 <div className="relative" ref={dropdownRef}>
