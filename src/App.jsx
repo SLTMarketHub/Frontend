@@ -31,7 +31,13 @@ import Inventory from "./pages/seller/Inventory.jsx";
 import Promotions from "./pages/seller/Promotions.jsx";
 import Messages from "./pages/seller/Messages.jsx";
 import Support from "./pages/seller/Support.jsx";
-
+import Dashboard from './pages/seller/Dashboard.jsx';
+import StoreManagement from './pages/seller/StoreManagement.jsx';
+import Products from './pages/seller/Products.jsx';
+import AddProduct from './pages/seller/AddProduct.jsx';
+import EditProduct from './pages/seller/EditProduct.jsx';
+import Analytics from './pages/seller/Analytics.jsx';
+import Payouts from './pages/seller/Payouts.jsx';
 // ✅ Protected route wrapper
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated } = useAuth();
@@ -142,6 +148,63 @@ function App() {
                     </ProtectedRoute>
                 }
             />
+            <Route
+                path="/dashboard"
+                element={
+                    <ProtectedRoute>
+                        <Dashboard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/store"
+                element={
+                    <ProtectedRoute>
+                        <StoreManagement />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/products"
+                element={
+                    <ProtectedRoute>
+                        <Products />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/products/add"
+                element={
+                    <ProtectedRoute>
+                        <AddProduct />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/products/edit/:id"
+                element={
+                    <ProtectedRoute>
+                        <EditProduct />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/analytics"
+                element={
+                    <ProtectedRoute>
+                        <Analytics />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/payouts"
+                element={
+                    <ProtectedRoute>
+                        <Payouts />
+                    </ProtectedRoute>
+                }
+            />
+              
 
             {/* 🔹 Fallback */}
             <Route path="*" element={<NotFoundPage />} />
