@@ -10,8 +10,7 @@ const GoogleSuccess = () => {
 
     const [googleUser, setGoogleUser] = useState(null);
     const [loading, setLoading] = useState(false);
-    const backendUrl =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
+    const backendUrl = "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
