@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, Calendar, Percent, Tag, Edit, Trash2, Eye, MoreHorizontal } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
@@ -6,15 +6,10 @@ import Table from '../../components/seller/Table';
 import Modal from '../../components/seller/Modal';
 import { formatDate, formatPercentage, getStatusColor } from '../../utils/seller/formatters';
 import toast from 'react-hot-toast';
-
-const mockPromotions = [
-  { id: '1', name: 'Summer Sale', type: 'percentage', value: 20, code: 'SUMMER20', startDate: '2024-06-01T00:00:00Z', endDate: '2024-08-31T23:59:59Z', usageLimit: 1000, usageCount: 245, status: 'active', minOrderValue: 50 },
-  { id: '2', name: 'Free Shipping Weekend', type: 'free_shipping', value: 0, code: 'FREESHIP', startDate: '2024-01-15T00:00:00Z', endDate: '2024-01-17T23:59:59Z', usageCount: 156, status: 'expired' },
-  { id: '3', name: 'New Customer Discount', type: 'fixed', value: 15, code: 'WELCOME15', startDate: '2024-01-01T00:00:00Z', endDate: '2024-12-31T23:59:59Z', usageLimit: 500, usageCount: 89, status: 'active', minOrderValue: 30 },
-];
+import { listProductOfferingPrices, createDiscountPromotion, deleteProductOfferingPrice } from '../../services/seller/productService';
 
 const Promotions = () => {
-  const [promotions, setPromotions] = useState(mockPromotions);
+  const [promotions, setPromotions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -47,18 +42,81 @@ const Promotions = () => {
   };
 
   const filteredPromotions = promotions.filter(promotion => {
-    const matchesSearch = promotion.name.toLowerCase().includes(searchTerm.toLowerCase()) || promotion.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = promotion.name.toLowerCase().includes(searchTerm.toLowerCase()) || (promotion.code || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !selectedStatus || selectedStatus === 'All' || promotion.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await listProductOfferingPrices({ priceType: 'discount', limit: 100 });
+        const rows = (res?.data || []).map(pop => {
+          // Derive value/type from priceAlteration or description pattern
+          let type = 'fixed';
+          let value = 0;
+          const pa = Array.isArray(pop.priceAlteration) && pop.priceAlteration[0];
+          if (pa) {
+            const v = pa?.price?.taxIncludedAmount?.value ?? pa?.price?.dutyFreeAmount?.value;
+            if (v !== undefined && v !== null) {
+              if (v < 0) { type = 'fixed'; value = Math.abs(v); }
+            }
+          } else if (typeof pop.description === 'string' && pop.description.includes('%')) {
+            type = 'percentage';
+            value = Number(pop.description.replace(/[^0-9.]/g, '')) || 0;
+          }
+          const start = pop.validFor?.startDateTime || pop.createdAt;
+          const end = pop.validFor?.endDateTime;
+          const isExpired = end ? new Date(end) < new Date() : false;
+          const status = isExpired ? 'expired' : ((pop.lifecycleStatus || 'Active').toLowerCase() === 'active' ? 'active' : 'inactive');
+          return {
+            id: pop.id,
+            name: pop.name,
+            code: '',
+            type,
+            value,
+            startDate: start,
+            endDate: end,
+            usageLimit: 0,
+            usageCount: 0,
+            status
+          };
+        });
+        setPromotions(rows);
+      } catch (e) {
+        toast.error('Failed to load promotions');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const handleAddPromotion = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const newPromotion = { id: Date.now().toString(), ...form, usageCount: 0, status: 'active' };
-      setPromotions([...promotions, newPromotion]);
+      const created = await createDiscountPromotion({
+        name: form.name,
+        type: form.type === 'free_shipping' ? 'fixed' : form.type,
+        value: Number(form.value) || 0,
+        startDate: form.startDate,
+        endDate: form.endDate
+      });
+      const newRow = {
+        id: created.id,
+        name: created.name,
+        code: '',
+        type: form.type,
+        value: Number(form.value) || 0,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        usageLimit: form.usageLimit || 0,
+        usageCount: 0,
+        status: 'active'
+      };
+      setPromotions([...promotions, newRow]);
       toast.success('Promotion created successfully');
       setShowAddModal(false);
       setForm({ name: '', type: 'percentage', value: 0, code: '', startDate: '', endDate: '', usageLimit: 0, minOrderValue: 0 });
@@ -72,7 +130,7 @@ const Promotions = () => {
   const handleDeletePromotion = async (id) => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await deleteProductOfferingPrice(id);
       setPromotions(promotions.filter(p => p.id !== id));
       toast.success('Promotion deleted successfully');
       setShowDeleteModal(false);
@@ -115,7 +173,7 @@ const Promotions = () => {
 
   const activePromotions = promotions.filter(p => p.status === 'active').length;
   const expiredPromotions = promotions.filter(p => p.status === 'expired').length;
-  const totalUsage = promotions.reduce((sum, p) => sum + p.usageCount, 0);
+  const totalUsage = promotions.reduce((sum, p) => sum + (p.usageCount || 0), 0);
 
   return (
     <div className="space-y-6">
