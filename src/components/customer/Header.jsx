@@ -21,7 +21,7 @@ export default function Header() {
             </div>
 
             {/* Search Bar */}
-            <div className="align-center justify-center mt-auto mb-auto flex">
+            {/* <div className="align-center justify-center mt-auto mb-auto flex">
                 <input
                     type="text"
                     placeholder="Search"
@@ -41,12 +41,12 @@ export default function Header() {
                         />
                     </svg>
                 </button>
-            </div>
+            </div> */}
 
             {/* Right Section */}
-            <div className="flex space-x-8 items-center relative">
+            <div className="flex space-x-8 items-center relative mr-4">
                 {/* Notifications */}
-                <div className="cursor-pointer">
+                {/* <div className="cursor-pointer">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
@@ -59,7 +59,7 @@ export default function Header() {
                             clipRule="evenodd"
                         />
                     </svg>
-                </div>
+                </div> */}
 
                 {/* Welcome Dropdown */}
                 <div className="relative">
