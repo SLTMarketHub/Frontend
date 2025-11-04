@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
 import "./App.css";
 
+
+
 // ✅ Auth pages
 import RegisterPage from "./pages/auth/RegisterPage.jsx";
 import RegisterOthersPage from "./pages/auth/RegisterOthersPage.jsx";
@@ -19,6 +21,8 @@ import ProductCategory from "./pages/customer/ProductCategory.jsx";
 import ProductPage from "./pages/customer/ProductPage.jsx";
 import CartPage from "./pages/customer/CartPage.jsx";
 import CheckoutPage from "./components/customer/cart/CheckoutPage.jsx";
+import UserPage from "./pages/customer/UserPage.jsx";
+import OrdersPage from "./pages/customer/OrdersPage.jsx";
 
 // ✅ Seller pages
 import Orders from "./pages/seller/Orders.jsx";
@@ -71,6 +75,23 @@ function App() {
                     </ProtectedRoute>
                 }
             />
+            <Route
+                path="/user/profile/:id"
+                element={
+                    <ProtectedRoute>
+                        <UserPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/user/:id/orders"
+                element={
+                    <ProtectedRoute>
+                        <OrdersPage />
+                    </ProtectedRoute>
+                }
+            />
+
 
             {/* 🔹 Protected Seller routes */}
             <Route
