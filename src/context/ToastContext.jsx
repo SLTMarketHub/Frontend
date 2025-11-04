@@ -44,4 +44,10 @@ export const useToastContext = () => {
   return ctx;
 };
 
+// Alias for backward compatibility
+export const useToast = () => {
+  const toast = useToastContext();
+  return { toast };
+};
+
 export default ToastContext;
