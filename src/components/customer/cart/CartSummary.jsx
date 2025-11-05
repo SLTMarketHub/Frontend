@@ -49,13 +49,19 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
     return sum + numericPrice * qty;
   }, 0);
 
-  // Discount logic
-  const discount =
-    typeof promoCode === "string" && promoCode.trim().toUpperCase() === "SAVE10"
-      ? subtotal * 0.1
-      : 0;
+  // ✅ Automatic Discount Logic
+  let discount = 0;
+  let discountLabel = "No discount applied";
 
-  // Shipping cost
+  if (subtotal > 10000) {
+    discount = subtotal * 0.05; // 5% off
+    discountLabel = "5% discount for orders above Rs.10,000";
+  } else if (subtotal > 5000) {
+    discount = 300; // Flat Rs.300 off
+    discountLabel = "Rs.300 discount for orders above Rs.5,000";
+  }
+
+  // Shipping cost logic
   const shippingCost =
     shipping === "standard" ? 300 : shipping === "express" ? 600 : 0;
 
@@ -90,10 +96,12 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
         <span>Rs.{subtotal.toFixed(2)}</span>
       </div>
 
-      <div className="flex justify-between text-green-600">
+      <div className="flex justify-between text-green-700">
         <span>Discount</span>
         <span>-Rs.{discount.toFixed(2)}</span>
       </div>
+
+      <p className="text-xs text-gray-500 italic">{discountLabel}</p>
 
       <div className="flex justify-between text-gray-700">
         <span>Shipping</span>
@@ -106,14 +114,6 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
         <span>Total</span>
         <span>Rs.{total.toFixed(2)}</span>
       </div>
-
-      <input
-        type="text"
-        placeholder="Promo code"
-        value={promoCode}
-        onChange={(e) => setPromoCode && setPromoCode(e.target.value)}
-        className="w-full border p-2 rounded-lg mt-2"
-      />
 
       <button
         onClick={handleCheckout}
