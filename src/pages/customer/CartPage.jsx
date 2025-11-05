@@ -58,7 +58,6 @@ const CartPage = () => {
           <CartItem />
 
           {/* Checkout Options */}
-         
           <ShippingOptions shipping={shipping} setShipping={setShipping} />
           <PaymentMethods payment={payment} setPayment={setPayment} />
         </div>
