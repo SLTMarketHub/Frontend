@@ -18,9 +18,6 @@ const RegisterOthersPage = () => {
     const [passwordStrength, setPasswordStrength] = useState(0);
     const [passwordStrengthLabel, setPasswordStrengthLabel] = useState("");
 
-    const backendUrl =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
-
     const handleChange = (e) => {
         const { name, value } = e.target;
         const updatedForm = { ...formData, [name]: value };
@@ -78,7 +75,11 @@ const RegisterOthersPage = () => {
 
 
         try {
-            if (!formData.role) formData.role = "Customer";
+            if (!formData.role) {
+                formData.role = "Partner"
+                return;
+            }
+
             navigate(
                 `/complete-signup?email=${encodeURIComponent(
                     formData.email
@@ -194,6 +195,7 @@ const RegisterOthersPage = () => {
                     {passwordError && (
                         <p className="text-red-500 text-sm mb-3">{passwordError}</p>
                     )}
+
 
                     <button
                         type="submit"

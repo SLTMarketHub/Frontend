@@ -14,8 +14,7 @@ const LoginOthersPage = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
 
-    const backend_url =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
+    const BASE_URL = "http://localhost:3050/tmf-api/authService";
 
 
     const handleChange = (e) => {
@@ -28,7 +27,7 @@ const LoginOthersPage = () => {
         setMessage("");
 
         try {
-            const res = await fetch(`${backend_url}/login`, {
+            const res = await fetch(`${BASE_URL}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),

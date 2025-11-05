@@ -10,8 +10,7 @@ const GoogleSuccess = () => {
 
     const [googleUser, setGoogleUser] = useState(null);
     const [loading, setLoading] = useState(false);
-    const backendUrl =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
+    const BASE_URL = "http://localhost:3050/tmf-api/authService";
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -45,7 +44,7 @@ const GoogleSuccess = () => {
         if (!googleUser) return;
         try {
             setLoading(true);
-            await axios.post(`${backendUrl}/google/complete-signup`, {
+            await axios.post(`${BASE_URL}/auth/google/complete-signup`, {
                 email: googleUser.email,
                 name: googleUser.name,
                 role: "Customer",

@@ -24,8 +24,7 @@ const CompleteSignupPage = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
 
-    const backendUrl =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
+    const BASE_URL = "http://localhost:3050/tmf-api/authService";
 
     useEffect(() => {
         let timer;
@@ -47,7 +46,7 @@ const CompleteSignupPage = () => {
 
         setLoading(true);
         try {
-            const res = await fetch(`${backendUrl}/send-otp`, {
+            const res = await fetch(`${BASE_URL}/auth/send-otp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: formData.email }),
@@ -68,7 +67,7 @@ const CompleteSignupPage = () => {
     };
 
     const handleCompleteSignup = async () => {
-        const { username, email, password, otp } = formData;
+        const { username, email, password,role , otp } = formData;
         if (!otp || !username || !email || !password) {
             setMessage("All fields and OTP are required");
             return;
@@ -76,14 +75,14 @@ const CompleteSignupPage = () => {
 
         setLoading(true);
         try {
-            const res = await fetch(`${backendUrl}/complete-signup`, {
+            const res = await fetch(`${BASE_URL}/auth/complete-signup`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     username,
                     email,
                     password,
-                    role: "Customer",
+                    role,
                     otp,
                     google: fromGoogle,
                 }),

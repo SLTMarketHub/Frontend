@@ -9,7 +9,7 @@ const RegisterPage = () => {
         email: "",
         password: "",
         confirmPassword: "",
-        role: "",
+        role: "Customer",
     });
 
     const [loading, setLoading] = useState(false);
@@ -19,9 +19,7 @@ const RegisterPage = () => {
     const [passwordStrength, setPasswordStrength] = useState(0);
     const [passwordStrengthLabel, setPasswordStrengthLabel] = useState("");
 
-    const backendUrl =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
-
+    const BASE_URL = "http://localhost:3050/tmf-api/authService";
     const handleChange = (e) => {
         const { name, value } = e.target;
         const updatedForm = { ...formData, [name]: value };
@@ -79,7 +77,10 @@ return "";
 
 
 try {
-  if (!formData.role) formData.role = "Customer";
+  if (!formData.role) {
+      formData.role = "Customer";
+      return;
+  }
   navigate(
     `/complete-signup?email=${encodeURIComponent(
       formData.email
@@ -100,7 +101,7 @@ try {
 
     const handleGoogleSignUp = () => {
         if (!formData.role) formData.role = "Customer";
-        window.location.href = `${backendUrl}/google?role=${formData.role}`;
+        window.location.href = `${BASE_URL}/auth/google?role=${formData.role}`;
     };
 
     return (
