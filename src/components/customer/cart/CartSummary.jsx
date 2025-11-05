@@ -5,36 +5,72 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
 
-  // Load cart items from localStorage
+  // Load from localStorage initially
   useEffect(() => {
     const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
     setCartItems(storedCart);
   }, []);
 
-  // Calculate subtotal
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  // Listen for real-time cart updates
+  useEffect(() => {
+    const handleCartChange = () => {
+      const updatedCart = JSON.parse(localStorage.getItem("cart")) || [];
+      setCartItems(updatedCart);
+    };
 
-  // Apply promo discount
-  const discount = promoCode === "SAVE10" ? subtotal * 0.1 : 0;
+    window.addEventListener("storage", handleCartChange);
+    window.addEventListener("cartUpdated", handleCartChange);
 
-  // Dynamic shipping cost
+    return () => {
+      window.removeEventListener("storage", handleCartChange);
+      window.removeEventListener("cartUpdated", handleCartChange);
+    };
+  }, []);
+
+  // Safely parse numeric price
+  const parseNumericPrice = (raw) => {
+    if (raw === null || raw === undefined) return 0;
+    const cleaned = String(raw).replace(/[^0-9.]/g, "");
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  // Get quantity safely
+  const getQuantity = (item) => {
+    const q = item.quantity ?? item.qty ?? 1;
+    const n = Number(q);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+  };
+
+  // Calculate subtotal dynamically
+  const subtotal = cartItems.reduce((sum, item) => {
+    const numericPrice = parseNumericPrice(item.price);
+    const qty = getQuantity(item);
+    return sum + numericPrice * qty;
+  }, 0);
+
+  // ✅ Automatic Discount Logic
+  let discount = 0;
+  let discountLabel = "No discount applied";
+
+  if (subtotal > 10000) {
+    discount = subtotal * 0.05; // 5% off
+    discountLabel = "5% discount for orders above Rs.10,000";
+  } else if (subtotal > 5000) {
+    discount = 300; // Flat Rs.300 off
+    discountLabel = "Rs.300 discount for orders above Rs.5,000";
+  }
+
+  // Shipping cost logic
   const shippingCost =
-    shipping === "standard" ? 300 :
-    shipping === "express" ? 600 : 0;
+    shipping === "standard" ? 300 : shipping === "express" ? 600 : 0;
 
   const total = subtotal - discount + shippingCost;
 
-  // Handle Checkout
+  // Checkout handler
   const handleCheckout = () => {
-    if (cartItems.length === 0) {
+    if (!cartItems || cartItems.length === 0) {
       alert("⚠️ Your cart is empty.");
-      return;
-    }
-    if (!address) {
-      alert("⚠️ Please select a delivery address.");
       return;
     }
     if (!shipping) {
@@ -46,7 +82,6 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
       return;
     }
 
-    // ✅ Navigate to checkout page with order details
     navigate("/checkout", {
       state: { cartItems, address, shipping, payment, total },
     });
@@ -61,16 +96,16 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
         <span>Rs.{subtotal.toFixed(2)}</span>
       </div>
 
-      <div className="flex justify-between text-green-600">
+      <div className="flex justify-between text-green-700">
         <span>Discount</span>
         <span>-Rs.{discount.toFixed(2)}</span>
       </div>
 
+      <p className="text-xs text-gray-500 italic">{discountLabel}</p>
+
       <div className="flex justify-between text-gray-700">
         <span>Shipping</span>
-        <span>
-          {shippingCost === 0 ? "—" : `Rs.${shippingCost.toFixed(2)}`}
-        </span>
+        <span>{shippingCost === 0 ? "—" : `Rs.${shippingCost.toFixed(2)}`}</span>
       </div>
 
       <hr className="border-gray-300" />
@@ -79,14 +114,6 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
         <span>Total</span>
         <span>Rs.{total.toFixed(2)}</span>
       </div>
-
-      <input
-        type="text"
-        placeholder="Promo code"
-        value={promoCode}
-        onChange={(e) => setPromoCode(e.target.value)}
-        className="w-full border p-2 rounded-lg mt-2"
-      />
 
       <button
         onClick={handleCheckout}
