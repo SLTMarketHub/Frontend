@@ -8,7 +8,7 @@ const RegisterOthersPage = () => {
         email: "",
         password: "",
         confirmPassword: "",
-        role: "",
+        role: "Partner",
     });
 
     const [loading, setLoading] = useState(false);
@@ -22,7 +22,6 @@ const RegisterOthersPage = () => {
         const { name, value } = e.target;
         const updatedForm = { ...formData, [name]: value };
         setFormData(updatedForm);
-
 
         let errorMsg = "";
         if (name === "password") errorMsg = validatePassword(value);
@@ -40,8 +39,6 @@ const RegisterOthersPage = () => {
         setIsSubmitDisabled(
             !(updatedForm.password && updatedForm.confirmPassword && errorMsg === "")
         );
-
-
     };
 
     const validatePassword = (password) => {
@@ -51,7 +48,6 @@ const RegisterOthersPage = () => {
         if (/[0-9]/.test(password)) score++;
         if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
         setPasswordStrength(score);
-
 
         if (score <= 1) {
             setPasswordStrengthLabel("Weak");
@@ -64,8 +60,6 @@ const RegisterOthersPage = () => {
             return "";
         }
         return "";
-
-
     };
 
     const handleSignup = async (e) => {
@@ -73,13 +67,8 @@ const RegisterOthersPage = () => {
         setLoading(true);
         setMessage("");
 
-
         try {
-            if (!formData.role) {
-                formData.role = "Partner"
-                return;
-            }
-
+            const role = formData.role || "Partner";
             navigate(
                 `/complete-signup?email=${encodeURIComponent(
                     formData.email
@@ -87,22 +76,18 @@ const RegisterOthersPage = () => {
                     formData.username
                 )}&password=${encodeURIComponent(
                     formData.password
-                )}&role=${formData.role}&from=manual`
+                )}&role=${encodeURIComponent(role)}&from=manual`
             );
         } catch (err) {
             setMessage("Server error while sending OTP");
         } finally {
             setLoading(false);
         }
-
-
     };
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
-            <div
-                className="relative w-[95%] max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 p-8 animate-fadeIn">
-
+            <div className="relative w-[95%] max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 p-8 animate-fadeIn">
                 <button
                     onClick={() => navigate(-1)}
                     className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-lg"
@@ -114,7 +99,7 @@ const RegisterOthersPage = () => {
                     Create Your Account
                 </h2>
                 <p className="text-center text-gray-500 mb-6">
-                    Join MarketHub and explore telecommunication products easily.
+                    Register as a Partner to manage your MarketHub operations.
                 </p>
 
                 {message && (
@@ -165,6 +150,7 @@ const RegisterOthersPage = () => {
                             }`}
                         ></div>
                     </div>
+
                     {passwordStrengthLabel && (
                         <p
                             className={`text-sm mb-3 ${
@@ -196,7 +182,6 @@ const RegisterOthersPage = () => {
                         <p className="text-red-500 text-sm mb-3">{passwordError}</p>
                     )}
 
-
                     <button
                         type="submit"
                         disabled={loading || isSubmitDisabled}
@@ -209,6 +194,7 @@ const RegisterOthersPage = () => {
                         {loading ? "Requesting OTP..." : "Sign Up"}
                     </button>
                 </form>
+
                 <p className="text-sm text-center mt-5 text-gray-600">
                     Already have an account?{" "}
                     <Link
@@ -220,7 +206,6 @@ const RegisterOthersPage = () => {
                 </p>
             </div>
         </div>
-
     );
 };
 
