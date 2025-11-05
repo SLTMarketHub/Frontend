@@ -3,26 +3,9 @@ import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 
 const UserPage = () => {
-  // ✅ For later: Fetch from backend using sessionStorage
-  // const [user, setUser] = useState(null);
-  // const [orders, setOrders] = useState([]);
-  //
-  // useEffect(() => {
-  //   const storedUserId = sessionStorage.getItem("userId");
-  //   if (storedUserId) {
-  //     fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/${storedUserId}`)
-  //       .then((res) => res.json())
-  //       .then((data) => setUser(data))
-  //       .catch((err) => console.error("Error fetching user:", err));
-  //
-  //     fetch(`${import.meta.env.VITE_API_BASE_URL}/api/orders/user/${storedUserId}`)
-  //       .then((res) => res.json())
-  //       .then((data) => setOrders(data))
-  //       .catch((err) => console.error("Error fetching orders:", err));
-  //   }
-  // }, []);
-
   const [userDetails, setUserDetails] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwords, setPasswords] = useState({
@@ -34,10 +17,22 @@ const UserPage = () => {
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUserDetails(JSON.parse(storedUser));
-    }
+    if (storedUser) setUserDetails(JSON.parse(storedUser));
   }, []);
+
+  useEffect(() => {
+    if (!userDetails) return;
+
+    fetch(`${import.meta.env.VITE_ENDPOINT_TMF629}/${userDetails.id}`)
+      .then((res) => res.json())
+      .then((data) => setUserData(data))
+      .catch((err) => console.error("Error fetching user:", err));
+
+    fetch(`${import.meta.env.VITE_ENDPOINT_TMF622_ORDER}/byCustomer/${userDetails.id}`)
+      .then((res) => res.json())
+      .then((data) => setOrders(data))
+      .catch((err) => console.error("Error fetching orders:", err));
+  }, [userDetails]);
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
@@ -60,15 +55,16 @@ const UserPage = () => {
           <div className="flex flex-col md:flex-row items-center justify-center mb-8 border-b pb-6">
             <div className="text-center">
               <h1 className="text-3xl font-bold text-gray-800">
-                Hi, {userDetails?.username || "Customer Name"} 👋
+                Hi, {userDetails?.username?.split(" ")[0] || "User"} 👋
               </h1>
-              <p className="text-gray-600 mt-1">
-                {userDetails?.email || "customer@example.com"}
-              </p>
-              <p className="text-gray-600">+94 71 234 5678</p>
-              <p className="text-gray-600">123 Main Street, Colombo</p>
+              <p className="text-gray-600 mt-1">{userDetails?.email || "Email: N/A"}</p>
+              <p className="text-gray-600">{userData?.phone || "Phone: N/A"}</p>
+              <p className="text-gray-600">{userData?.address || "Address: N/A"}</p>
               <p className="text-gray-500 text-sm mt-1">
-                Member since January 2023
+                Member since{" "}
+                {userDetails?.createdAt
+                  ? new Date(userDetails.createdAt).toLocaleDateString()
+                  : "N/A"}
               </p>
 
               <div className="flex flex-wrap gap-4 mt-6 justify-center">
@@ -95,27 +91,31 @@ const UserPage = () => {
                 Recent Orders
               </h2>
               <ul className="space-y-3">
-                <li className="border rounded-lg p-3 bg-white">
-                  <p className="font-medium">Order #ORD-1045</p>
-                  <p className="text-sm text-gray-600">
-                    Date: 2025-10-28 | Status: Delivered
-                  </p>
-                  <p className="text-sm text-gray-600">Total: LKR 12,500.00</p>
-                </li>
-                <li className="border rounded-lg p-3 bg-white">
-                  <p className="font-medium">Order #ORD-1021</p>
-                  <p className="text-sm text-gray-600">
-                    Date: 2025-10-12 | Status: In Progress
-                  </p>
-                  <p className="text-sm text-gray-600">Total: LKR 4,200.00</p>
-                </li>
+                {orders.length === 0 ? (
+                  <p className="text-gray-600">No orders found.</p>
+                ) : (
+                  orders.slice(0, 5).map((order) => (
+                    <li key={order.id} className="border rounded-lg p-3 bg-white">
+                      <p className="font-medium">Order #{order.id}</p>
+                      <p className="text-sm text-gray-600">
+                        Date: {new Date(order.orderDate).toISOString().split("T")[0]} | Status:{" "}
+                        {order.status}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Total: {order.totalAmount.toFixed(2)}
+                      </p>
+                    </li>
+                  ))
+                )}
               </ul>
-              <button
-                onClick={ViewOrdersBtnClick}
-                className="mt-4 text-blue-600 hover:underline font-medium cursor-pointer"
-              >
-                View All Orders →
-              </button>
+              {orders.length === 0 ? null : (
+                <button
+                  onClick={ViewOrdersBtnClick}
+                  className="mt-4 text-blue-600 hover:underline font-medium cursor-pointer"
+                >
+                  View All Orders →
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ const UserPage = () => {
 
       <Footer />
 
-      {/* 🟦 Edit Profile Popup */}
+      {/* Edit Profile Modal */}
       {showEditProfile && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex justify-center items-center z-50 animate-fadeIn">
           <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-lg relative">
@@ -141,7 +141,7 @@ const UserPage = () => {
                 <label className="block text-gray-700">Full Name</label>
                 <input
                   type="text"
-                  defaultValue="Customer Name"
+                  defaultValue={userDetails?.username || "Customer Name"}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -149,7 +149,7 @@ const UserPage = () => {
                 <label className="block text-gray-700">Email</label>
                 <input
                   type="email"
-                  defaultValue="customer@example.com"
+                  defaultValue={userDetails?.email || "customer@example.com"}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -157,7 +157,7 @@ const UserPage = () => {
                 <label className="block text-gray-700">Phone</label>
                 <input
                   type="tel"
-                  defaultValue="+94 71 234 5678"
+                  defaultValue={userData?.phone || ""}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -165,7 +165,7 @@ const UserPage = () => {
                 <label className="block text-gray-700">Address</label>
                 <input
                   type="text"
-                  defaultValue="123 Main Street, Colombo"
+                  defaultValue={userData?.address || ""}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -189,7 +189,7 @@ const UserPage = () => {
         </div>
       )}
 
-      {/* 🟧 Change Password Popup */}
+      {/* Change Password Modal */}
       {showChangePassword && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex justify-center items-center z-50 animate-fadeIn">
           <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-lg relative">
@@ -230,16 +230,13 @@ const UserPage = () => {
                   name="repeat"
                   value={passwords.repeat}
                   onChange={handlePasswordChange}
-                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
-                    passwordMatch
+                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${passwordMatch
                       ? "focus:ring-blue-500"
                       : "focus:ring-red-500 border-red-400"
-                  }`}
+                    }`}
                 />
                 {!passwordMatch && (
-                  <p className="text-red-500 text-sm mt-1">
-                    Passwords do not match.
-                  </p>
+                  <p className="text-red-500 text-sm mt-1">Passwords do not match.</p>
                 )}
               </div>
               <div className="flex justify-end gap-3 mt-6">
