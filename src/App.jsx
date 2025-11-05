@@ -38,12 +38,6 @@ const ProtectedRoute = ({ children }) => {
     return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-// ✅ Protected route wrapper
-const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated } = useAuth();
-    return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
-
 function App() {
     return (
         <Routes>
