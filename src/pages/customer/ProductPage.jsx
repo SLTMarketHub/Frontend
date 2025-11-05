@@ -103,11 +103,11 @@ export default function ProductPage() {
     <div className="bg-[#fefefe] min-w-[700px] flex flex-col min-h-screen">
       <Header />
       {loading ? (
-        <div className="flex justify-center items-center py-10">
+        <div className="flex justify-center items-center py-10 min-h-screen">
           <ThreeDots color="#4DB848" height={60} width={60} />
         </div>
       ) : (
-        <section className="mx-4 md:mx-30 mt-4 mb-4 flex-1">
+        <section className="mx-48 md:mx-30 mt-4 mb-4 flex-1">
           {/* Back Button */}
           <div className="flex mb-2">
             <button
