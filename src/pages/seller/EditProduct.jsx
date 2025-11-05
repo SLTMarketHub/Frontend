@@ -5,6 +5,7 @@ import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
 import { useForm } from '../../hooks/seller/useForm';
 import toast from 'react-hot-toast';
+import { getProductOffering, getProductOfferingPrice, updateProductOffering, updateProductOfferingPrice, createProductOfferingPrice } from '../../services/seller/productService';
 
 const EditProduct = () => {
   const { id } = useParams();
@@ -38,27 +39,27 @@ const EditProduct = () => {
     const loadProduct = async () => {
       setProductLoading(true);
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const mockProduct = {
-          name: 'Wireless Bluetooth Headphones',
-          description: 'High-quality wireless headphones with noise cancellation',
-          category: 'Electronics',
-          price: 99.99,
-          stock: 45,
-          sku: 'WBH-001',
-          status: 'active',
-          images: ['https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg'],
-        };
+        const off = await getProductOffering(id);
+        const firstCategory = Array.isArray(off.category) && off.category.length > 0 ? (off.category[0].name || '') : '';
+        const images = Array.isArray(off.attachment) ? off.attachment.map(a => a.href || a.url).filter(Boolean) : [];
+        const status = (off.lifecycleStatus || 'Active').toLowerCase() === 'active'
+          ? 'active'
+          : (off.lifecycleStatus || '').toLowerCase() === 'retired' ? 'inactive' : 'draft';
+
         resetForm();
-        setFieldValue('name', mockProduct.name);
-        setFieldValue('description', mockProduct.description);
-        setFieldValue('category', mockProduct.category);
-        setFieldValue('price', mockProduct.price);
-        setFieldValue('stock', mockProduct.stock);
-        setFieldValue('sku', mockProduct.sku);
-        setFieldValue('status', mockProduct.status);
-        setFieldValue('images', mockProduct.images);
-        setImageUrls(mockProduct.images);
+        setFieldValue('name', off.name || '');
+        setFieldValue('description', off.description || '');
+        setFieldValue('category', firstCategory || '');
+        setFieldValue('status', status);
+        setFieldValue('images', images);
+        setImageUrls(images);
+
+        const firstPriceId = off.productOfferingPrice?.[0]?.id;
+        if (firstPriceId) {
+          const price = await getProductOfferingPrice(firstPriceId);
+          const amt = price?.price?.taxIncludedAmount?.value ?? price?.price?.dutyFreeAmount?.value ?? 0;
+          setFieldValue('price', amt || 0);
+        }
       } catch (error) {
         toast.error('Failed to load product');
       } finally {
@@ -86,7 +87,36 @@ const EditProduct = () => {
   const onSubmit = async (formData) => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const lifecycleMap = {
+        draft: 'InDesign',
+        active: 'Active',
+        inactive: 'Retired'
+      };
+      await updateProductOffering(id, {
+        name: formData.name,
+        description: formData.description,
+        lifecycleStatus: lifecycleMap[formData.status] || 'Active',
+        isSellable: formData.status !== 'inactive',
+        category: formData.category ? [{ name: formData.category }] : [],
+        attachment: imageUrls.map((url, index) => ({ id: `${id}-att-${index + 1}`, attachmentType: 'image', url, name: `image-${index + 1}`, '@type': 'Attachment' }))
+      });
+
+      // Handle price
+      const off = await getProductOffering(id);
+      const firstPriceId = off.productOfferingPrice?.[0]?.id;
+      const amount = Number(formData.price) || 0;
+      if (firstPriceId) {
+        await updateProductOfferingPrice(firstPriceId, {
+          price: {
+            dutyFreeAmount: { value: amount, unit: 'LKR' },
+            taxIncludedAmount: { value: amount, unit: 'LKR' },
+            taxRate: 0
+          }
+        });
+      } else if (amount > 0) {
+        await createProductOfferingPrice({ offeringId: id, amount, currency: 'LKR' });
+      }
+
       toast.success('Product updated successfully');
       navigate('/products');
     } catch (error) {
@@ -222,4 +252,3 @@ const EditProduct = () => {
 };
 
 export default EditProduct;
-

@@ -5,6 +5,7 @@ import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
 import { useForm } from '../../hooks/seller/useForm';
 import toast from 'react-hot-toast';
+import { createProductOffering, createProductOfferingPrice } from '../../services/seller/productService';
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -50,7 +51,29 @@ const AddProduct = () => {
   const onSubmit = async (formData) => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const lifecycleMap = {
+        draft: 'InDesign',
+        active: 'Active',
+        inactive: 'Retired'
+      };
+
+      const offering = await createProductOffering({
+        name: formData.name,
+        description: formData.description,
+        categoryName: formData.category,
+        lifecycleStatus: lifecycleMap[formData.status] || 'Active',
+        isSellable: formData.status !== 'inactive',
+        imageUrls
+      });
+
+      if (formData.price > 0) {
+        await createProductOfferingPrice({
+          offeringId: offering.id,
+          amount: Number(formData.price),
+          currency: 'LKR'
+        });
+      }
+
       toast.success('Product created successfully');
       navigate('/products');
     } catch (error) {
@@ -166,4 +189,3 @@ const AddProduct = () => {
 };
 
 export default AddProduct;
-
