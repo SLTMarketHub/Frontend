@@ -9,31 +9,12 @@ import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/formatters';
 import toast from 'react-hot-toast';
 
-const mockOrder = {
-  id: 'ORD-001',
-  customerName: 'A1',
-  customerEmail: 'a1@gmail.com',
-  customerPhone: '+94123456789',
-  total: 20299.00,
-  subtotal: 20000.00,
-  tax: 199.00,
-  shipping: 100.00,
-  status: 'pending',
-  paymentStatus: 'paid',
-  paymentMethod: 'Credit Card',
-  items: [
-    { id: '1', productId: 'P001', productName: 'Wireless Bluetooth Headphones', quantity: 1, price: 5099.00, total: 5099.00, image: 'https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg' },
-    { id: '2', productId: 'P002', productName: 'Smart Fitness Watch', quantity: 1, price: 10549.00, total: 10549.00, image: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg' },
-  ],
-  shippingAddress: { name: 'A1', street: '123 Main Street', city: 'A city', state: 'AC', zipCode: '10001', country: 'Sri Lanka' },
-  billingAddress: { name: 'A1', street: '123 Main Street', city: 'B city', state: 'BC', zipCode: '10001', country: 'Sri Lanka' },
-  createdAt: '2024-09-15T10:30:00Z',
-  updatedAt: '2024-09-15T10:30:00Z',
-};
+// Mock data removed per request. TODO: Implement API call to fetch order by `id`.
 
 const OrderDetails = () => {
   const { id } = useParams();
-  const [order, setOrder] = useState(mockOrder);
+  // No mock data — initialize to null. TODO: fetch order by id from API and setOrder(response)
+  const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [orderLoading, setOrderLoading] = useState(true);
 
@@ -41,7 +22,10 @@ const OrderDetails = () => {
     const loadOrder = async () => {
       setOrderLoading(true);
       try {
+        // Simulate network delay while API integration is added.
         await new Promise(resolve => setTimeout(resolve, 1000));
+        // No mock data available here. Once API is implemented, setOrder(responseData).
+        setOrder(null);
       } catch (error) {
         toast.error('Failed to load order');
       } finally {
@@ -84,6 +68,24 @@ const OrderDetails = () => {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // If there's no order data (mock removed), show a placeholder and instructions.
+  if (!order) {
+    return (
+      <>
+      <Header />
+      <Layout>
+        <div className="space-y-6">
+          <Card>
+            <h3 className="text-lg font-medium text-gray-900">Order not found</h3>
+            <p className="text-gray-600">No order data available. Implement API fetch to load order details for id: {id}</p>
+          </Card>
+        </div>
+      </Layout>
+      <Footer />
+      </>
     );
   }
 

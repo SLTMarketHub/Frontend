@@ -8,14 +8,13 @@ import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/formatters';
 
-const mockOrders = [
-  { id: 'ORD-001', customerName: 'A1', customerEmail: 'a1@gmail.com', total: 20299.00, status: 'pending', paymentStatus: 'paid', items: 3, createdAt: '2024-09-15T10:30:00Z' },
-  { id: 'ORD-002', customerName: 'B1', customerEmail: 'b1@gmail.com', total: 10490.00, status: 'shipped', paymentStatus: 'paid', items: 1, createdAt: '2024-09-14T14:22:00Z' },
-  { id: 'ORD-003', customerName: 'C1', customerEmail: 'c1@gamil.com', total: 5799.00, status: 'delivered', paymentStatus: 'paid', items: 2, createdAt: '2024-08-13T09:15:00Z' },
-];
+// TODO: Replace this empty state with a real API call to fetch seller orders.
+// Mock data removed per request.
 
 const Orders = () => {
-  const [orders] = useState(mockOrders);
+  // Orders list is initially empty — mock data removed.
+  // TODO: Fetch orders from seller API and call setOrders(...)
+  const [orders, setOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
 
