@@ -22,7 +22,7 @@ export async function getProductOffering(id) {
   return api.get('/productOffering', { params })
 }
 
-export async function createProductOffering({ name, description, categoryName, lifecycleStatus = 'Active', isSellable = true, imageUrls = [] }) {
+export async function createProductOffering({ name, description, categoryName, lifecycleStatus = 'Active', isSellable = true, images = [], imageUrls = [] }) {
   const id = generateId('OFF');
   const body = {
     id,
@@ -31,14 +31,24 @@ export async function createProductOffering({ name, description, categoryName, l
     lifecycleStatus,
     isSellable,
     category: categoryName ? [{ name: categoryName }] : [],
-    attachment: (imageUrls || []).map((url, index) => ({
+    attachment: []
+  };
+
+  // Handle both image URLs and pre-formatted image objects
+  if (images && images.length > 0) {
+    // If images are already in the correct format
+    body.attachment = images;
+  } else if (imageUrls && imageUrls.length > 0) {
+    // For backward compatibility - convert URLs to attachment objects
+    body.attachment = imageUrls.map((url, index) => ({
       id: `${id}-att-${index + 1}`,
-      attachmentType: 'image',
+      type: 'image',
       url,
       name: `image-${index + 1}`,
       '@type': 'Attachment'
-    }))
-  };
+    }));
+  }
+
   const { data } = await api.post(OFFERING_PATH, body);
   return data; // created offering
 }
