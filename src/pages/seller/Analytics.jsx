@@ -17,6 +17,9 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Eye } from 'lucide-react';
 import Card from '../../components/seller/Card';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatNumber, formatPercentage } from '../../utils/seller/formatters';
 
 const salesData = [
@@ -64,6 +67,9 @@ const Analytics = () => {
   );
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -132,6 +138,9 @@ const Analytics = () => {
         </Card>
       </div>
     </div>
+    </Layout>
+    <Footer />
+    </>
   );
 };
 

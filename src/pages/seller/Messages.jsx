@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Search, Send, Paperclip, MoreVertical, Star, Archive, Trash2 } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import { formatDate } from '../../utils/seller/formatters';
 
 const mockMessages = [
@@ -68,6 +71,9 @@ const Messages = () => {
   const starredCount = messages.filter(m => m.isStarred).length;
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="h-[calc(100vh-8rem)]">
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -215,6 +221,9 @@ const Messages = () => {
         </div>
       </div>
     </div>
+    </Layout>
+    <Footer />
+    </>
   );
 };
 
