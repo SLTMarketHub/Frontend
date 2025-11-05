@@ -68,18 +68,26 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
+        <div className="fixed inset-0 flex items-center justify-center overflow-hidden z-50 animated-gradient-bg">
             <div className="relative w-[95%] max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 p-8 animate-fadeIn">
                 <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => navigate("/home")}
                     className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-lg"
                 >
                     ✕
                 </button>
 
-                <h2 className="text-3xl font-bold text-center text-blue-700 mb-2">
-                    Sign In to MarketHub
-                </h2>
+                <div className="mb-8">
+                    <div className="flex items-center justify-center mb-4">
+                        <img src="./logo.png" alt="MarketHub Logo" className="h-10 mr-2" />
+                        <h1 className="text-4xl font-bold text-center text-blue-700">
+                            MarketHub
+                        </h1>
+                    </div>
+                    <h1 className="text-xl font-bold text-center text-black mb-2">
+                        Sign in
+                    </h1>
+                </div>
 
                 {message && (
                     <div className="mb-3 text-sm text-red-600 text-center">{message}</div>
@@ -97,6 +105,7 @@ const LoginPage = () => {
                             value={formData.email}
                             onChange={handleChange}
                             required
+                            autoComplete="current-email"
                             className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
                         />
                     </div>
@@ -112,6 +121,7 @@ const LoginPage = () => {
                             value={formData.password}
                             onChange={handleChange}
                             required
+                            autoComplete="current-password"
                             className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
                         />
                     </div>
@@ -137,8 +147,8 @@ const LoginPage = () => {
                 >
                     <FcGoogle size={22} />
                     <span className="font-medium text-gray-700">
-            Sign in with Google
-          </span>
+                        Sign in with Google
+                    </span>
                 </button>
 
                 <p className="text-sm text-center mt-5 text-gray-600">
@@ -151,6 +161,41 @@ const LoginPage = () => {
                     </Link>
                 </p>
             </div>
+            {/* Animated gradient background */}
+            <style jsx="true">{`
+                @keyframes gradientFlow {
+                    0% {
+                        background-position: 0% 50%;
+                    }
+                    50% {
+                        background-position: 100% 50%;
+                    }
+                    100% {
+                        background-position: 0% 50%;
+                    }
+                }
+
+                .animated-gradient-bg {
+                    background: linear-gradient(-45deg, #4db849, #0f55a6, #4db849, #0f55a6);
+                    background-size: 300% 300%;
+                    animation: gradientFlow 10s ease infinite;
+                }
+
+                .animate-fadeIn {
+                    animation: fadeIn 0.8s ease-in-out;
+                }
+
+                @keyframes fadeIn {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.97);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+            `}</style>
         </div>
     );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react';
 import Card from '../../components/seller/Card';
@@ -10,20 +10,17 @@ import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/f
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 import toast from 'react-hot-toast';
-
-const mockProducts = [
-  { id: '1', name: 'Wireless Bluetooth Headphones', category: 'Electronics', price: 5099.99, stock: 45, status: 'active', createdAt: '2024-01-15T10:30:00Z', images: ['https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg'] },
-  { id: '2', name: 'Smart Fitness Watch', category: 'Electronics', price: 10599.99, stock: 23, status: 'active', createdAt: '2024-01-14T09:15:00Z', images: ['https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg'] },
-  { id: '3', name: 'Portable Laptop Stand', category: 'Accessories', price: 3449.99, stock: 0, status: 'inactive', createdAt: '2024-01-13T14:22:00Z', images: ['https://images.pexels.com/photos/4482896/pexels-photo-4482896.jpeg'] },
-];
+import { listProductOfferings, deleteProductOffering, getProductOfferingPrice } from '../../services/seller/productService';
 
 const Products = () => {
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [priceMap, setPriceMap] = useState({});
 
   const categories = ['All', 'Electronics', 'Accessories', 'Clothing', 'Home & Garden'];
 
@@ -33,10 +30,68 @@ const Products = () => {
     return matchesSearch && matchesCategory;
   });
 
+  useEffect(() => {
+    const load = async () => {
+      setInitialLoading(true);
+      try {
+        const res = await listProductOfferings({ limit: 100 });
+        const offerings = (res?.data || []).map(off => {
+          // Handle both old and new category formats
+          let categoryName = 'Uncategorized';
+          if (Array.isArray(off.category) && off.category.length > 0) {
+            // Handle both {name: 'Category'} and string formats
+            const firstCategory = off.category[0];
+            categoryName = typeof firstCategory === 'string' 
+              ? firstCategory 
+              : (firstCategory.name || '');
+          }
+          
+          // Handle both attachment and images arrays for backward compatibility
+          let imageUrl = '';
+          if (Array.isArray(off.attachment) && off.attachment.length > 0) {
+            imageUrl = off.attachment[0].url || off.attachment[0].href || '';
+          } else if (Array.isArray(off.images) && off.images.length > 0) {
+            imageUrl = off.images[0];
+          }
+          
+          return {
+            id: off.id,
+            name: off.name,
+            category: categoryName,
+            images: imageUrl ? [imageUrl] : [],
+            status: (off.lifecycleStatus || 'Active').toLowerCase(),
+            createdAt: off.createdAt,
+            priceRefs: off.productOfferingPrice || []
+          };
+        });
+        setProducts(offerings);
+
+        // Preload prices for first price reference per offering
+        const uniquePriceIds = Array.from(new Set(offerings
+          .map(o => (o.priceRefs?.[0]?.id))
+          .filter(Boolean)));
+        const prices = await Promise.all(uniquePriceIds.map(id => getProductOfferingPrice(id).catch(() => null)));
+        const map = {};
+        prices.forEach(p => {
+          if (p && p.id) {
+            const amt = p?.price?.taxIncludedAmount?.value ?? p?.price?.dutyFreeAmount?.value ?? 0;
+            map[p.id] = amt;
+          }
+        });
+        setPriceMap(map);
+      } catch (e) {
+        toast.error('Failed to load products');
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    load();
+  }, []);
+
   const handleDeleteProduct = async (id) => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await deleteProductOffering(id);
       setProducts(products.filter(p => p.id !== id));
       toast.success('Product deleted successfully');
       setShowDeleteModal(false);
@@ -58,8 +113,11 @@ const Products = () => {
         </div>
       </div>
     ) },
-    { key: 'price', label: 'Price', render: (value) => (<span className="font-medium">{formatCurrency(value)}</span>) },
-    { key: 'stock', label: 'Stock', render: (value) => (<span className={`font-medium ${value === 0 ? 'text-red-600' : value < 10 ? 'text-yellow-600' : 'text-green-600'}`}>{value}</span>) },
+    { key: 'price', label: 'Price', render: (value, row) => {
+      const firstPriceId = row.priceRefs?.[0]?.id;
+      const amount = firstPriceId ? priceMap[firstPriceId] ?? 0 : 0;
+      return (<span className="font-medium">{formatCurrency(amount)}</span>);
+    } },
     { key: 'status', label: 'Status', render: (value) => (<span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(value)}`}>{value.charAt(0).toUpperCase() + value.slice(1)}</span>) },
     { key: 'createdAt', label: 'Created', render: (value) => formatDate(value) },
     { key: 'actions', label: 'Actions', render: (value, row) => (
@@ -100,7 +158,7 @@ const Products = () => {
         </div>
       </Card>
 
-      <Table data={filteredProducts} columns={columns} emptyMessage="No products found" />
+      <Table data={filteredProducts} columns={columns} emptyMessage={initialLoading ? 'Loading...' : 'No products found'} />
 
       <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Product">
         <div className="space-y-4">
@@ -119,4 +177,3 @@ const Products = () => {
 };
 
 export default Products;
-

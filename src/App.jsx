@@ -1,9 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
-import "./App.css";
-
-
 
 // ✅ Auth pages
 import RegisterPage from "./pages/auth/RegisterPage.jsx";
@@ -30,14 +27,26 @@ import OrderDetails from "./pages/seller/OrderDetails.jsx";
 import Inventory from "./pages/seller/Inventory.jsx";
 import Promotions from "./pages/seller/Promotions.jsx";
 import Messages from "./pages/seller/Messages.jsx";
-import Support from "./pages/seller/Support.jsx";
-import Dashboard from './pages/seller/Dashboard.jsx';
+import SellerSupport from "./pages/seller/Support.jsx";
+import SellerDashboard from './pages/seller/Dashboard.jsx';
 import StoreManagement from './pages/seller/StoreManagement.jsx';
 import Products from './pages/seller/Products.jsx';
 import AddProduct from './pages/seller/AddProduct.jsx';
 import EditProduct from './pages/seller/EditProduct.jsx';
-import Analytics from './pages/seller/Analytics.jsx';
+import SellerAnalytics from './pages/seller/Analytics.jsx';
 import Payouts from './pages/seller/Payouts.jsx';
+
+// ✅ Admin pages
+import AdminLayout from './layouts/AdminLayout';
+import Dashboard from './pages/admin/Dashboard';
+import Users from './pages/admin/Users';
+import AdminOrders from './pages/admin/Orders';
+import Analytics from './pages/admin/Analytics';
+import Settings from './pages/admin/Settings';
+import Support from './pages/admin/Support';
+import SellerApproval from './pages/SellerApproval';
+import ProductModeration from './pages/ProductModeration';
+
 // ✅ Protected route wrapper
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated } = useAuth();
@@ -49,21 +58,21 @@ function App() {
         <Routes>
             {/* 🔹 Default route */}
             <Route path="/" element={<Navigate to="/home" replace />} />
-
+            
             {/* 🔹 Auth routes */}
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/registerOthers" element={<RegisterOthersPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/loginOthers" element={<LoginOthersPage />} />
             <Route path="/complete-signup" element={<CompleteSignupPage />} />
-            <Route path="/google-success" element={<GoogleSuccess />} />
+            <Route path="/auth/google/success" element={<GoogleSuccess />} />
             <Route path="/google-callback" element={<GoogleCallback />} />
-
+            
             {/* 🔹 Customer routes (public) */}
             <Route path="/home" element={<HomePage />} />
             <Route path="/category/:categoryId" element={<ProductCategory />} />
             <Route path="/product/:id" element={<ProductPage />} />
-
+            
             {/* 🔹 Protected Customer routes */}
             <Route
                 path="/cart"
@@ -97,7 +106,6 @@ function App() {
                     </ProtectedRoute>
                 }
             />
-
 
             {/* 🔹 Protected Seller routes */}
             <Route
@@ -144,7 +152,7 @@ function App() {
                 path="/support"
                 element={
                     <ProtectedRoute>
-                        <Support />
+                        <SellerSupport />
                     </ProtectedRoute>
                 }
             />
@@ -152,7 +160,7 @@ function App() {
                 path="/dashboard"
                 element={
                     <ProtectedRoute>
-                        <Dashboard />
+                        <SellerDashboard />
                     </ProtectedRoute>
                 }
             />
@@ -192,7 +200,7 @@ function App() {
                 path="/analytics"
                 element={
                     <ProtectedRoute>
-                        <Analytics />
+                        <SellerAnalytics />
                     </ProtectedRoute>
                 }
             />
@@ -204,8 +212,20 @@ function App() {
                     </ProtectedRoute>
                 }
             />
-              
 
+            {/* 🔹 Admin routes */}
+            <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="users" element={<Users />} />
+                <Route path="sellers" element={<SellerApproval />} />
+                <Route path="products" element={<ProductModeration />} />
+                <Route path="orders" element={<AdminOrders />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="support" element={<Support />} />
+            </Route>
+              
             {/* 🔹 Fallback */}
             <Route path="*" element={<NotFoundPage />} />
         </Routes>

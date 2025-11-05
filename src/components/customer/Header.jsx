@@ -34,14 +34,22 @@ export default function Header() {
   const goToSignUp = () => navigate("/register");
   const goToCart = () => navigate("/cart");
   const goToProfile = () =>
-    navigate(`/user/profile/${userDetails?.username || authUser?.username || authUser?.name || "user"}`);
-  const goToOrders = () => navigate("/orders");
+    navigate(
+      `/user/profile/${userDetails?.username || authUser?.username || authUser?.name || "user"}`
+    );
+  const goToOrders = () => navigate(`/user/${userDetails.id}/orders`);
 
   const handleLogout = () => {
     setDropdownOpen(false);
     logout();
     localStorage.clear();
     navigate("/home");
+  };
+
+  // ✅ Extract first name only
+  const getFirstName = (fullName) => {
+    if (!fullName) return "User";
+    return fullName.trim().split(" ")[0];
   };
 
   return (
@@ -75,7 +83,14 @@ export default function Header() {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span>Hi, {userDetails?.username || authUser?.name || "User"}</span>
+                <span>
+                  Hi,{" "}
+                  {getFirstName(
+                    userDetails?.username ||
+                      authUser?.name ||
+                      authUser?.username
+                  )}
+                </span>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
