@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { Search, Filter, Eye, Package, Truck } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Table from '../../components/seller/Table';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/formatters';
 
 const mockOrders = [
@@ -45,6 +48,9 @@ const Orders = () => {
   ];
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -69,6 +75,9 @@ const Orders = () => {
 
       <Table data={filteredOrders} columns={columns} emptyMessage="No orders found" />
     </div>
+    </Layout>
+    <Footer />
+    </>
   );
 };
 

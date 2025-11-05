@@ -3,6 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Package, Truck, MapPin, CreditCard, Mail, Phone } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/formatters';
 import toast from 'react-hot-toast';
 
@@ -85,6 +88,9 @@ const OrderDetails = () => {
   }
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -186,6 +192,9 @@ const OrderDetails = () => {
         </div>
       </div>
     </div>
+    </Layout>
+    <Footer />
+    </>
   );
 };
 
