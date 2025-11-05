@@ -7,33 +7,21 @@ import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatNumber, formatPercentage } from '../../utils/seller/formatters';
 
-const mockStats = {
-  totalRevenue: 125430,
-  totalOrders: 1247,
-  totalProducts: 89,
-  totalCustomers: 3421,
-  revenueGrowth: 12.5,
-  orderGrowth: 8.3,
-  productGrowth: 15.2,
-  customerGrowth: 23.1,
+// Data placeholders; integrate with backend analytics when available
+const stats = {
+  totalRevenue: 0,
+  totalOrders: 0,
+  totalProducts: 0,
+  totalCustomers: 0,
+  revenueGrowth: 0,
+  orderGrowth: 0,
+  productGrowth: 0,
+  customerGrowth: 0,
 };
 
-const mockSalesData = [
-  { date: 'Jan', revenue: 45000, orders: 120 },
-  { date: 'Feb', revenue: 52000, orders: 140 },
-  { date: 'Mar', revenue: 48000, orders: 130 },
-  { date: 'Apr', revenue: 61000, orders: 165 },
-  { date: 'May', revenue: 55000, orders: 150 },
-  { date: 'Jun', revenue: 67000, orders: 180 },
-];
+const salesData = [];
 
-const mockTopProducts = [
-  { id: '1', name: 'Wireless Headphones', sales: 134, revenue: 234000 },
-  { id: '2', name: 'Smart Watch', sales: 129, revenue: 378000 },
-  { id: '3', name: 'Laptop Stand', sales: 116, revenue: 78000 },
-  { id: '4', name: 'Phone Case', sales: 103, revenue: 28600 },
-  { id: '5', name: 'USB Cable', sales: 98, revenue: 12800 },
-];
+const topProducts = [];
 
 const Dashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
@@ -87,29 +75,29 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Revenue"
-          value={formatCurrency(mockStats.totalRevenue)}
-          change={mockStats.revenueGrowth}
+          value={formatCurrency(stats.totalRevenue)}
+          change={stats.revenueGrowth}
           icon={DollarSign}
           trend="up"
         />
         <StatCard
           title="Orders"
-          value={formatNumber(mockStats.totalOrders)}
-          change={mockStats.orderGrowth}
+          value={formatNumber(stats.totalOrders)}
+          change={stats.orderGrowth}
           icon={ShoppingCart}
           trend="up"
         />
         <StatCard
           title="Products"
-          value={formatNumber(mockStats.totalProducts)}
-          change={mockStats.productGrowth}
+          value={formatNumber(stats.totalProducts)}
+          change={stats.productGrowth}
           icon={Package}
           trend="up"
         />
         <StatCard
           title="Customers"
-          value={formatNumber(mockStats.totalCustomers)}
-          change={mockStats.customerGrowth}
+          value={formatNumber(stats.totalCustomers)}
+          change={stats.customerGrowth}
           icon={Users}
           trend="up"
         />
@@ -121,7 +109,7 @@ const Dashboard = () => {
             <h3 className="text-lg font-medium text-gray-900">Revenue Trend</h3>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={mockSalesData}>
+            <LineChart data={salesData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
@@ -136,7 +124,7 @@ const Dashboard = () => {
             <h3 className="text-lg font-medium text-gray-900">Orders Trend</h3>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={mockSalesData}>
+            <BarChart data={salesData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
@@ -152,7 +140,10 @@ const Dashboard = () => {
           <h3 className="text-lg font-medium text-gray-900">Top Selling Products</h3>
         </div>
         <div className="space-y-4">
-          {mockTopProducts.map((product) => (
+          {topProducts.length === 0 && (
+            <div className="p-4 text-sm text-gray-600">No data available yet.</div>
+          )}
+          {topProducts.map((product) => (
             <div key={product.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div>
                 <p className="font-medium text-gray-900">{product.name}</p>
