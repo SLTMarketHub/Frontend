@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Eye, Package, Truck } from 'lucide-react';
 import Card from '../../components/seller/Card';
@@ -7,6 +7,7 @@ import Layout from '../../components/seller/Layout';
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/formatters';
+import { fetchOrders } from '../../services/seller/orderService';
 
 // TODO: Replace this empty state with a real API call to fetch seller orders.
 // Mock data removed per request.
@@ -19,6 +20,33 @@ const Orders = () => {
   const [selectedStatus, setSelectedStatus] = useState('');
 
   const statuses = ['All', 'pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadOrders = async () => {
+      try {
+        const data = await fetchOrders({ state: selectedStatus || undefined, signal: controller.signal });
+        const list = (data?.productOrder || []).map((po) => ({
+          id: po.id,
+          customerName: po?.relatedParty?.find(r => r.role === 'Customer')?.name || 'N/A',
+          customerEmail: po?.relatedParty?.find(r => r.role === 'Customer')?.email || 'N/A',
+          items: po?.orderItem?.length || 0,
+          total: 0,
+          status: po?.state || 'pending',
+          paymentStatus: 'pending',
+          createdAt: po?.orderDate || po?.createdAt || new Date().toISOString(),
+        }));
+        setOrders(list);
+      } catch (e) {
+        if (e.name !== 'CanceledError' && e.name !== 'AbortError') {
+          console.error('Failed to load orders', e);
+        }
+      }
+    };
+
+    loadOrders();
+    return () => controller.abort();
+  }, [selectedStatus]);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -74,7 +102,7 @@ const Orders = () => {
 
       <Table data={filteredOrders} columns={columns} emptyMessage="No orders found" />
     </div>
-    </Layout>
+     </Layout>
     <Footer />
     </>
   );

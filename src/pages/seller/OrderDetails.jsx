@@ -8,8 +8,8 @@ import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/formatters';
 import toast from 'react-hot-toast';
-
-// Mock data removed per request. TODO: Implement API call to fetch order by `id`.
+import { fetchOrderById, updateOrderById } from '../../services/seller/orderService';
+import placeholderImg from '../../assets/images/placeholderImg.jpg';
 
 const OrderDetails = () => {
   const { id } = useParams();
@@ -22,10 +22,32 @@ const OrderDetails = () => {
     const loadOrder = async () => {
       setOrderLoading(true);
       try {
-        // Simulate network delay while API integration is added.
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // No mock data available here. Once API is implemented, setOrder(responseData).
-        setOrder(null);
+        const po = await fetchOrderById(id);
+        const mapped = {
+          id: po.id,
+          createdAt: po.orderDate || po.createdAt || new Date().toISOString(),
+          status: po.state || 'pending',
+          paymentStatus: 'pending',
+          paymentMethod: 'N/A',
+          items: (po.orderItem || []).map((oi) => ({
+            id: oi.id,
+            productName: oi.product?.name || 'Item',
+            quantity: oi.quantity || 1,
+            price: 0,
+            total: 0,
+            image: null
+          })),
+          shippingAddress: { name: '', street: '', city: '', state: '', zipCode: '', country: '' },
+          billingAddress: { name: '', street: '', city: '', state: '', zipCode: '', country: '' },
+          customerEmail: po.relatedParty?.find(r => r.role === 'Customer')?.email || '',
+          customerPhone: po.relatedParty?.find(r => r.role === 'Customer')?.phone || ''
+            || po.relatedParty?.find(r => r.role === 'Customer')?.telephone || '',
+          subtotal: 0,
+          tax: 0,
+          shipping: 0,
+          total: 0
+        };
+        setOrder(mapped);
       } catch (error) {
         toast.error('Failed to load order');
       } finally {
@@ -33,16 +55,14 @@ const OrderDetails = () => {
       }
     };
 
-    if (id) {
-      loadOrder();
-    }
+    if (id) loadOrder();
   }, [id]);
 
   const updateOrderStatus = async (newStatus) => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOrder({ ...order, status: newStatus });
+      await updateOrderById(id, { state: newStatus });
+      setOrder((prev) => ({ ...prev, status: newStatus }));
       toast.success('Order status updated successfully');
     } catch (error) {
       toast.error('Failed to update order status');
@@ -71,21 +91,15 @@ const OrderDetails = () => {
     );
   }
 
-  // If there's no order data (mock removed), show a placeholder and instructions.
+  // If there's no order data, show a minimal placeholder.
   if (!order) {
     return (
-      <>
-      <Header />
-      <Layout>
-        <div className="space-y-6">
-          <Card>
-            <h3 className="text-lg font-medium text-gray-900">Order not found</h3>
-            <p className="text-gray-600">No order data available. Implement API fetch to load order details for id: {id}</p>
-          </Card>
-        </div>
-      </Layout>
-      <Footer />
-      </>
+      <div className="space-y-6">
+        <Card>
+          <h3 className="text-lg font-medium text-gray-900">Order not found</h3>
+          <p className="text-gray-600">No order data available for id: {id}</p>
+        </Card>
+      </div>
     );
   }
 
@@ -93,7 +107,7 @@ const OrderDetails = () => {
     <>
     <Header />
     <Layout>
-    <div className="space-y-6">
+       <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Link to="/orders" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -117,7 +131,7 @@ const OrderDetails = () => {
             <div className="space-y-4">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
-                  <img src={item.image} alt={item.productName} className="w-16 h-16 object-cover rounded-lg" />
+                   <img src={item.image || placeholderImg} alt={item.productName} className="w-16 h-16 object-cover rounded-lg" />
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">{item.productName}</h4>
                     <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
@@ -194,7 +208,7 @@ const OrderDetails = () => {
         </div>
       </div>
     </div>
-    </Layout>
+     </Layout>
     <Footer />
     </>
   );
