@@ -138,7 +138,7 @@ export default function ProductPage() {
           )}
 
           {/* Divider */}
-          <div className="h-[1px] bg-gray-300 my-4"></div>
+          <div className="h-px bg-gray-300 my-4" />
 
           {/* Related Products */}
           <h2 className="text-blue-900 text-3xl font-bold text-left mb-4">
@@ -152,10 +152,7 @@ export default function ProductPage() {
           ) : relatedProducts.length > 0 ? (
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
               {relatedProducts.map((p) => (
-                <div
-                  key={p.id}
-                  className="min-w-[16rem] flex-shrink-0 border-0 p-3 rounded-lg shadow"
-                >
+                <div key={p.id} className="min-w-[16rem] shrink-0 border-0 p-3 rounded-lg shadow">
                   <ProductCard productDetails={p} />
                 </div>
               ))}
