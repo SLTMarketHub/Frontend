@@ -105,6 +105,7 @@ const LoginPage = () => {
                             value={formData.email}
                             onChange={handleChange}
                             required
+                            autoComplete="current-email"
                             className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
                         />
                     </div>
@@ -120,6 +121,7 @@ const LoginPage = () => {
                             value={formData.password}
                             onChange={handleChange}
                             required
+                            autoComplete="current-password"
                             className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
                         />
                     </div>

@@ -1,75 +1,52 @@
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 import { useNavigate } from "react-router-dom";
+import { ThreeDots } from "react-loader-spinner";
 
 const OrdersPage = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userDetails, setUserDetails] = useState(null);
 
-  /*
-  // 🔹 Uncomment when backend & sessionStorage are ready
   useEffect(() => {
-    const customerId = sessionStorage.getItem("customerId");
-    if (customerId) {
-      fetch(`https://markethub-api-gateway.onrender.com/tmf-api/productOrdering/v1/productOrder/${customerId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.status === "success" && Array.isArray(data.productOrder)) {
-            setOrders(data.productOrder);
-          } else {
-            setError("No orders found");
-          }
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error("Error fetching orders:", err);
-          setError("Failed to load orders");
-          setLoading(false);
-        });
-    } else {
-      setError("No customer ID found in session");
-      setLoading(false);
-    }
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) setUserDetails(JSON.parse(storedUser));
   }, []);
-  */
 
-  // Temporary sample data (for now)
   useEffect(() => {
-    setTimeout(() => {
-      setOrders([
-        {
-          id: "0392dbc9-a916-40a4-b6c8-f34f85453c79",
-          description: "New broadband connection",
-          orderDate: "2025-09-16T19:02:01.739Z",
-          state: "acknowledged",
-          orderItem: [
-            { product: { name: "Fiber Broadband 100Mbps" }, quantity: 1 },
-          ],
-        },
-        {
-          id: "c01dd9f3-0156-4451-b23b-c0de7aa643fc",
-          description: "New broadband connection",
-          orderDate: "2025-09-17T11:23:19.355Z",
-          state: "acknowledged",
-          orderItem: [
-            { product: { name: "Fiber Broadband 100Mbps" }, quantity: 1 },
-          ],
-        },
-      ]);
-      setLoading(false);
-    }, 800);
-  }, []);
+    if (!userDetails) return;
+
+    fetch(`${import.meta.env.VITE_ENDPOINT_TMF622_ORDER}/byCustomer/${userDetails.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success" && Array.isArray(data.productOrder)) {
+          setOrders(data.productOrder);
+        } else {
+          setError("No orders found");
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching orders:", err);
+        setError("Failed to load orders");
+        setLoading(false);
+      })
+  }, [userDetails]);
+
+  useEffect(() => {
+    console.log("Fetched orders:", orders);
+  }, [orders]);
 
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-gray-600 text-lg animate-pulse">Loading orders...</p>
-        </div>
+          <div className="flex-1 flex justify-center items-center py-10">
+                <ThreeDots variant="pulsate" color="#4DB848" size="medium" text="" textColor="" ariaLabel="loading" />
+            </div>
         <Footer />
       </div>
     );
@@ -126,11 +103,10 @@ const OrdersPage = () => {
                     </p>
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium mt-3 md:mt-0 ${
-                      order.state === "acknowledged"
+                    className={`px-3 py-1 rounded-full text-sm font-medium mt-3 md:mt-0 ${order.state === "acknowledged"
                         ? "bg-blue-100 text-blue-700"
                         : "bg-gray-100 text-gray-700"
-                    }`}
+                      }`}
                   >
                     {order.state.charAt(0).toUpperCase() +
                       order.state.slice(1)}

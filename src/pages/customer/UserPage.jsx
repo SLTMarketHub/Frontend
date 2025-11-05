@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
+import { ThreeDots } from "react-loader-spinner";
 
 const UserPage = () => {
   const [userDetails, setUserDetails] = useState(null);
@@ -14,6 +15,7 @@ const UserPage = () => {
     repeat: "",
   });
   const [passwordMatch, setPasswordMatch] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -23,15 +25,26 @@ const UserPage = () => {
   useEffect(() => {
     if (!userDetails) return;
 
-    fetch(`${import.meta.env.VITE_ENDPOINT_TMF629}/${userDetails.id}`)
-      .then((res) => res.json())
-      .then((data) => setUserData(data))
-      .catch((err) => console.error("Error fetching user:", err));
+    const fetchData = async () => {
+      try {
+        const [userRes, orderRes] = await Promise.all([
+          fetch(`${import.meta.env.VITE_ENDPOINT_TMF629}/${userDetails.id}`),
+          fetch(`${import.meta.env.VITE_ENDPOINT_TMF622_ORDER}/byCustomer/${userDetails.id}`),
+        ]);
 
-    fetch(`${import.meta.env.VITE_ENDPOINT_TMF622_ORDER}/byCustomer/${userDetails.id}`)
-      .then((res) => res.json())
-      .then((data) => setOrders(data))
-      .catch((err) => console.error("Error fetching orders:", err));
+        const userData = await userRes.json();
+        const orderData = await orderRes.json();
+
+        setUserData(userData);
+        setOrders(orderData);
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [userDetails]);
 
   const handlePasswordChange = (e) => {
@@ -44,6 +57,18 @@ const UserPage = () => {
   const ViewOrdersBtnClick = () => {
     window.location.href = `/user/${userDetails.id}/orders`;
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 flex justify-center items-center py-10">
+          <ThreeDots color="#4DB848" height="60" width="60" />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -108,7 +133,7 @@ const UserPage = () => {
                   ))
                 )}
               </ul>
-              {orders.length === 0 ? null : (
+              {orders.length > 0 && (
                 <button
                   onClick={ViewOrdersBtnClick}
                   className="mt-4 text-blue-600 hover:underline font-medium cursor-pointer"
@@ -230,10 +255,11 @@ const UserPage = () => {
                   name="repeat"
                   value={passwords.repeat}
                   onChange={handlePasswordChange}
-                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${passwordMatch
+                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
+                    passwordMatch
                       ? "focus:ring-blue-500"
                       : "focus:ring-red-500 border-red-400"
-                    }`}
+                  }`}
                 />
                 {!passwordMatch && (
                   <p className="text-red-500 text-sm mt-1">Passwords do not match.</p>

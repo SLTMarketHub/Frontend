@@ -37,7 +37,7 @@ export default function Header() {
     navigate(
       `/user/profile/${userDetails?.username || authUser?.username || authUser?.name || "user"}`
     );
-  const goToOrders = () => navigate("/orders");
+  const goToOrders = () => navigate(`/user/${userDetails.id}/orders`);
 
   const handleLogout = () => {
     setDropdownOpen(false);
