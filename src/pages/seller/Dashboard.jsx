@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, Users } from 'lucide-react';
 import Card from '../../components/seller/Card';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatNumber, formatPercentage } from '../../utils/seller/formatters';
 
 const mockStats = {
@@ -60,6 +63,9 @@ const Dashboard = () => {
   );
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -161,6 +167,9 @@ const Dashboard = () => {
         </div>
       </Card>
     </div>
+    </Layout>
+    <Footer />
+    </>
   );
 };
 
