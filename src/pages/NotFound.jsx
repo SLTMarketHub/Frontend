@@ -1,25 +1,20 @@
-import { Link } from "react-router-dom";
+import React from 'react';
 
-export default function NotFound() {
+const NotFound = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-center px-6 select-none">
-      <img
-        src="/assets/images/404.jpg"
-        alt="404 Not Found"
-        className="w-[40rem]"
-      />
-      <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-        Oops! Page Not Found
-      </h2>
-      <p className="text-gray-600 mb-6">
-        The page you’re looking for doesn’t exist or has been moved.
-      </p>
-      <Link
-        to="/"
-        className="bg-blue-900 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-800 transition"
-      >
-        Go Back Home
-      </Link>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <h1 className="text-6xl font-bold text-slt-primary">404</h1>
+        <p className="text-xl text-gray-600 mt-4">Page not found</p>
+        <a
+          href="/admin/dashboard"
+          className="inline-block mt-6 px-6 py-3 bg-slt-primary text-white rounded-lg hover:bg-slt-primary/90 transition-colors"
+        >
+          Go to Dashboard
+        </a>
+      </div>
     </div>
   );
-}
+};
+
+export default NotFound;

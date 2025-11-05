@@ -1,4 +1,41 @@
-@import "tailwindcss";
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+  .btn-primary {
+    @apply text-white shadow-md hover:shadow-lg;
+    background: linear-gradient(135deg, #0066CC 0%, #00ACC1 50%, #00A651 100%);
+    transition: all 0.3s ease;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #00A651 0%, #00ACC1 50%, #0066CC 100%);
+  }
+}
+
+@layer components {
+  .input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slt-primary focus:border-transparent transition-all duration-200;
+    background: linear-gradient(to right, #ffffff, #fafafa);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .input:hover {
+    border-color: #00A651;
+    box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.1);
+  }
+
+  .input:focus {
+    background: white;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.2);
+  }
 }
