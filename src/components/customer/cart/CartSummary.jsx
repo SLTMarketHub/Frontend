@@ -5,36 +5,66 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
 
-  // Load cart items from localStorage
+  // Load from localStorage initially
   useEffect(() => {
     const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
     setCartItems(storedCart);
   }, []);
 
-  // Calculate subtotal
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  // Listen for real-time cart updates
+  useEffect(() => {
+    const handleCartChange = () => {
+      const updatedCart = JSON.parse(localStorage.getItem("cart")) || [];
+      setCartItems(updatedCart);
+    };
 
-  // Apply promo discount
-  const discount = promoCode === "SAVE10" ? subtotal * 0.1 : 0;
+    window.addEventListener("storage", handleCartChange);
+    window.addEventListener("cartUpdated", handleCartChange);
 
-  // Dynamic shipping cost
+    return () => {
+      window.removeEventListener("storage", handleCartChange);
+      window.removeEventListener("cartUpdated", handleCartChange);
+    };
+  }, []);
+
+  // Safely parse numeric price
+  const parseNumericPrice = (raw) => {
+    if (raw === null || raw === undefined) return 0;
+    const cleaned = String(raw).replace(/[^0-9.]/g, "");
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  // Get quantity safely
+  const getQuantity = (item) => {
+    const q = item.quantity ?? item.qty ?? 1;
+    const n = Number(q);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+  };
+
+  // Calculate subtotal dynamically
+  const subtotal = cartItems.reduce((sum, item) => {
+    const numericPrice = parseNumericPrice(item.price);
+    const qty = getQuantity(item);
+    return sum + numericPrice * qty;
+  }, 0);
+
+  // Discount logic
+  const discount =
+    typeof promoCode === "string" && promoCode.trim().toUpperCase() === "SAVE10"
+      ? subtotal * 0.1
+      : 0;
+
+  // Shipping cost
   const shippingCost =
-    shipping === "standard" ? 300 :
-    shipping === "express" ? 600 : 0;
+    shipping === "standard" ? 300 : shipping === "express" ? 600 : 0;
 
   const total = subtotal - discount + shippingCost;
 
-  // Handle Checkout
+  // Checkout handler
   const handleCheckout = () => {
-    if (cartItems.length === 0) {
+    if (!cartItems || cartItems.length === 0) {
       alert("⚠️ Your cart is empty.");
-      return;
-    }
-    if (!address) {
-      alert("⚠️ Please select a delivery address.");
       return;
     }
     if (!shipping) {
@@ -46,7 +76,6 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
       return;
     }
 
-    // ✅ Navigate to checkout page with order details
     navigate("/checkout", {
       state: { cartItems, address, shipping, payment, total },
     });
@@ -68,9 +97,7 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
 
       <div className="flex justify-between text-gray-700">
         <span>Shipping</span>
-        <span>
-          {shippingCost === 0 ? "—" : `Rs.${shippingCost.toFixed(2)}`}
-        </span>
+        <span>{shippingCost === 0 ? "—" : `Rs.${shippingCost.toFixed(2)}`}</span>
       </div>
 
       <hr className="border-gray-300" />
@@ -84,7 +111,7 @@ const CartSummary = ({ promoCode, setPromoCode, address, shipping, payment }) =>
         type="text"
         placeholder="Promo code"
         value={promoCode}
-        onChange={(e) => setPromoCode(e.target.value)}
+        onChange={(e) => setPromoCode && setPromoCode(e.target.value)}
         className="w-full border p-2 rounded-lg mt-2"
       />
 
