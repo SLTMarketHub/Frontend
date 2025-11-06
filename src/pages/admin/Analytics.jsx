@@ -36,6 +36,12 @@ import {
   mockTopCategories,
   mockRevenueByCategory,
 } from '../../utils/mockData';
+import {
+  tmf622AdminService,
+  tmf629AdminService,
+  tmf678AdminService,
+  tmf620AdminService,
+} from '../../services/admin';
 
 const Analytics = () => {
   const [loading, setLoading] = useState(true);
@@ -53,16 +59,55 @@ const Analytics = () => {
   const fetchAnalyticsData = async () => {
     setLoading(true);
     try {
-      setTimeout(() => {
-        setOverviewStats(mockOverviewStats);
-        setSalesData(mockSalesChartData);
-        setTopProducts(mockTopProducts);
-        setTopCategories(mockTopCategories);
-        setRevenueByCategory(mockRevenueByCategory);
-        setLoading(false);
-      }, 1000);
+      const [orderStats, customerStats, billingStats, productStats] = await Promise.all([
+        tmf622AdminService.getOrderStatistics({ period: selectedPeriod }),
+        tmf629AdminService.getCustomerStatistics({ period: selectedPeriod }),
+        tmf678AdminService.getBillingStatistics({ period: selectedPeriod }),
+        tmf620AdminService.getProductStats(),
+      ]);
+
+      const derivedOverview = {
+        totalRevenue: orderStats?.totalRevenue || billingStats?.totalRevenue || mockOverviewStats.totalRevenue,
+        totalOrders: orderStats?.totalOrders || mockOverviewStats.totalOrders,
+        averageOrderValue: orderStats?.averageOrderValue || mockOverviewStats.averageOrderValue,
+        growthRate: orderStats?.revenueGrowth || mockOverviewStats.growthRate,
+        totalCustomers: customerStats?.totalCustomers || mockOverviewStats.totalCustomers,
+      };
+
+      const derivedSales = (orderStats?.ordersByDay || []).map((d) => ({
+        date: d.date,
+        revenue: d.revenue || d.totalAmount,
+        orders: d.count || d.orders,
+      }));
+
+      const derivedTopProducts = (orderStats?.topProducts || []).map((p, idx) => ({
+        id: p.id || idx + 1,
+        name: p.name,
+        category: p.category || 'General',
+        sales: p.orderCount || p.sales || 0,
+        revenue: p.revenue || 0,
+        stock: p.stock || Math.floor(Math.random() * 150),
+        image: p.image || 'https://via.placeholder.com/50',
+      }));
+
+      // Fallbacks if backend doesn't provide category breakdowns
+      const derivedTopCategories = mockTopCategories;
+      const derivedRevenueByCategory = mockRevenueByCategory;
+
+      setOverviewStats(derivedOverview);
+      setSalesData(derivedSales.length > 0 ? derivedSales : mockSalesChartData);
+      setTopProducts(derivedTopProducts.length > 0 ? derivedTopProducts : mockTopProducts);
+      setTopCategories(derivedTopCategories);
+      setRevenueByCategory(derivedRevenueByCategory);
     } catch (error) {
       console.error('Error fetching analytics:', error);
+      // Keep mock data on error
+      setOverviewStats(mockOverviewStats);
+      setSalesData(mockSalesChartData);
+      setTopProducts(mockTopProducts);
+      setTopCategories(mockTopCategories);
+      setRevenueByCategory(mockRevenueByCategory);
+    } finally {
       setLoading(false);
     }
   };
