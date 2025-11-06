@@ -16,6 +16,7 @@ export default function CategorySection() {
 
                 if (Array.isArray(data?.data)) {
                     setCategories(data.data);
+                    console.log("Fetched categories:", categories);
                 } else {
                     setCategories([]);
                 }
