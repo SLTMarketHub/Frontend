@@ -25,7 +25,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { name: 'Orders', href: '/orders', icon: ShoppingCart },
     { name: 'Inventory', href: '/inventory', icon: Archive },
     { name: 'Promotions', href: '/promotions', icon: Tag },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+    //{ name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Payouts', href: '/payouts', icon: CreditCard },
     { name: 'Messages', href: '/messages', icon: MessageCircle },
     { name: 'Support', href: '/support', icon: HelpCircle },
