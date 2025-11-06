@@ -1,13 +1,13 @@
 import axios from 'axios';
 
-const baseURL = import.meta?.env?.VITE_API_BASE_URL || '/tmf-api';
+// Use Vite dev proxy locally, absolute backend URL in production
+const baseURL = import.meta.env.DEV
+  ? ''
+  : (import.meta?.env?.VITE_API_BASE_URL || 'https://markethub-api-gateway.onrender.com');
 
 export const api = axios.create({
   baseURL,
   withCredentials: false,
-  headers: {
-    'Content-Type': 'application/json'
-  }
 });
 
 // Simple retry/backoff for rate-limited or transient errors
@@ -43,8 +43,5 @@ api.interceptors.response.use(
 export const upload = axios.create({
   baseURL,
   withCredentials: false,
-  headers: {
-    'Content-Type': 'multipart/form-data'
-  }
 });
 
