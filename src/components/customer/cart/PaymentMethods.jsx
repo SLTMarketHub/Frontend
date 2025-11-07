@@ -2,8 +2,7 @@ import React from "react";
 
 const PaymentMethods = ({ payment, setPayment }) => {
   const methods = [
-    { id: "stripe", label: "Stripe (Credit/Debit Card)" },
-    { id: "paypal", label: "PayPal" },
+   
     { id: "cod", label: "Cash on Delivery" },
   ];
 
