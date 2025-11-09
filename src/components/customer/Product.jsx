@@ -1,15 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext.jsx";
 
 export default function Product({ productDetails }) {
+  const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
   const [show, setShow] = useState(false);
   const [alert, setAlert] = useState("");
+  const [user, setUser] = useState(null); // ✅ make user a state variable
 
   const VITE_ENDPOINT_TMF622_ORDER = import.meta.env.VITE_ENDPOINT_TMF622_ORDER;
   const BASE_URL = import.meta.env.VITE_BASE_URL;
-  const customerId = sessionStorage.getItem("userId");
+
+  // ✅ Load user data once on mount
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    if (storedUser) setUser(storedUser);
+  }, []);
 
   const increaseQuantity = () => setQuantity((q) => q + 1);
   const decreaseQuantity = () => setQuantity((q) => (q > 1 ? q - 1 : 1));
@@ -20,89 +28,65 @@ export default function Product({ productDetails }) {
     setTimeout(() => setShow(false), 3000);
   };
 
-const handleAddToCart = () => {
-  try {
-    const imageSrc =
-      productDetails?.attachment?.[0]?.href
-        ? productDetails.attachment[0].href.startsWith("http")
-          ? productDetails.attachment[0].href
-          : `${BASE_URL}${productDetails.attachment[0].href}`
-        : "/assets/images/placeholderImg.jpg";
+  const handleAddToCart = () => {
+    try {
+      if (!user) {
+        showAlert("error", "Please log in to add items to cart.");
+        navigate("/login");
+        return;
+      }
 
-    addToCart({
-      customerId,
-      productId: productDetails.id,
-      name: productDetails.name,
-      price: productDetails.resolvedPrice,
-      image: imageSrc,
-      quantity,
-    });
+      const imageSrc =
+        productDetails?.attachment?.[0]?.href
+          ? productDetails.attachment[0].href.startsWith("http")
+            ? productDetails.attachment[0].href
+            : `${BASE_URL}${productDetails.attachment[0].href}`
+          : "/assets/images/placeholderImg.jpg";
 
-    showAlert("success", `Product added to cart!`);
-  } catch {
-    showAlert("error", "Failed to add to cart. Please try again.");
-  }
-};
+      addToCart({
+        customerId: user.id,
+        productId: productDetails.id,
+        name: productDetails.name,
+        price: productDetails.resolvedPrice,
+        image: imageSrc,
+        quantity,
+      });
+
+      showAlert("success", `Product added to cart!`);
+    } catch {
+      showAlert("error", "Failed to add to cart. Please try again.");
+    }
+  };
 
   const handleBuyNow = async () => {
     try {
-      const orderPayload = {
-        externalId: `ORDER-${Date.now()}`,
-        priority: "Normal",
-        description: `Order for ${productDetails.name}`,
-        category: "Product Purchase",
-        requestedStartDate: new Date().toISOString(),
-        requestedCompletionDate: new Date(
-          Date.now() + 24 * 60 * 60 * 1000
-        ).toISOString(),
-        orderItem: [
-          {
-            id: "1",
-            action: "add",
-            quantity,
-            product: {
-              id: productDetails.id,
-              name: productDetails.name,
-              productSpecification: {
-                id: `PS-${productDetails.id}`,
-                name: `${productDetails.name} Specification`,
-              },
-            },
-            productOffering: {
-              id: productDetails.id,
-              name: productDetails.name,
-            },
-            billingAccount: {
-              id: `ACC-${customerId}`,
-              name: "Customer Account",
-            },
-          },
-        ],
-        relatedParty: [
-          {
-            id: customerId,
-            role: "Customer",
-            name: "Customer",
-          },
-        ],
-        state: "acknowledged",
-      };
-
-      const res = await fetch(VITE_ENDPOINT_TMF622_ORDER, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(orderPayload),
-      });
-
-      if (res.ok) {
-        showAlert("success", `${productDetails.name} purchased successfully!`);
-      } else {
-        showAlert("error", "Failed to process your order.");
+      if (!user) {
+        showAlert("error", "Please log in to continue.");
+        navigate("/login");
+        return;
       }
-    } catch {
+
+      const numericPrice = parseFloat(
+        productDetails.resolvedPrice.replace(/[^\d.]/g, "")
+      );
+      const total = numericPrice * quantity;
+
+      navigate("/checkout", {
+        state: {
+          cartItems: [
+            {
+              name: productDetails.name,
+              price: numericPrice,
+              productId: productDetails.id,
+              quantity: quantity,
+            },
+          ],
+          total: total,
+          customerId: user.id,
+        },
+      });
+    } catch (error) {
+      console.error("Error navigating to checkout:", error);
       showAlert("error", "Error occurred. Please try again.");
     }
   };
@@ -126,12 +110,11 @@ const handleAddToCart = () => {
     <div className="block m-6">
       <div className="flex mb-2">
         <img
-  src={productImage}
-  alt={productDetails?.name || "Product image"}
-  onError={(e) => (e.target.src = "/assets/images/placeholderImg.jpg")}
-  className="object-cover w-[50vh] h-[50vh] rounded-lg mr-6 flex justify-center items-center"
-/>
-
+          src={productImage}
+          alt={productDetails?.name || "Product image"}
+          onError={(e) => (e.target.src = "/assets/images/placeholderImg.jpg")}
+          className="object-cover w-[50vh] h-[50vh] rounded-lg mr-6 flex justify-center items-center"
+        />
 
         <div className="flex-col mx-4 w-full">
           <h2 className="text-3xl font-bold text-left mb-2">
@@ -200,9 +183,7 @@ const handleAddToCart = () => {
       <div className="h-[1px] bg-gray-300 my-4"></div>
 
       <div>
-        <h3 className="text-2xl font-bold mb-4 text-center">
-          Product Details
-        </h3>
+        <h3 className="text-2xl font-bold mb-4 text-center">Product Details</h3>
         <p className="text-gray-600 text-center">
           {productDetails.description || "No product description available."}
         </p>

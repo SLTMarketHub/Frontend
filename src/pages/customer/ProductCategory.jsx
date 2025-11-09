@@ -10,15 +10,14 @@ export default function ProductCategory() {
     const navigate = useNavigate();
     const { categoryId } = useParams();
     const [showTopBtn, setShowTopBtn] = useState(false);
-
     const [categoryName, setCategoryName] = useState("");
     const [products, setProducts] = useState([]);
     const [categoryLoading, setCategoryLoading] = useState(true);
     const [productsLoading, setProductsLoading] = useState(true);
 
-    const ENDPOINT_OFFERING = import.meta.env.VITE_ENDPOINT_TMF620_OFFERING;
     const ENDPOINT_CATEGORY = import.meta.env.VITE_ENDPOINT_TMF620_CATEGORY;
     const ENDPOINT_PRICE = import.meta.env.VITE_ENDPOINT_TMF620_PRICE;
+    const ENDPOINT_OFFERINGS_BY_CATEGORY = import.meta.env.VITE_ENDPOINT_TMF620_OFFERINGS_BY_CATEGORY;
 
     // Scroll button
     useEffect(() => {
@@ -47,12 +46,12 @@ export default function ProductCategory() {
         fetchCategory();
     }, [categoryId, ENDPOINT_CATEGORY]);
 
-    // Fetch products + resolve prices
+    // Fetch products by category + resolve prices
     useEffect(() => {
         const fetchProducts = async () => {
             setProductsLoading(true);
             try {
-                const res = await fetch(`${ENDPOINT_OFFERING}?limit=100`);
+                const res = await fetch(`${ENDPOINT_OFFERINGS_BY_CATEGORY}/${categoryId}?limit=100`);
                 const data = await res.json();
 
                 if (!Array.isArray(data?.data)) {
@@ -60,27 +59,28 @@ export default function ProductCategory() {
                     return;
                 }
 
-                // Filter by category (robust)
-                const filtered = data.data.filter((product) => {
-                    if (!product.category) return false;
-                    if (Array.isArray(product.category)) return product.category.some(c => c.id === categoryId || c === categoryId);
-                    if (typeof product.category === "object") return product.category.id === categoryId;
-                    return product.category === categoryId; // string id
-                });
-
-                // Resolve prices in parallel
+                // Fetch prices in parallel
                 const productsWithPrices = await Promise.all(
-                    filtered.map(async (product) => {
+                    data.data.map(async (product) => {
                         if (product.productOfferingPrice?.length) {
                             try {
                                 const priceId = product.productOfferingPrice[0].id;
                                 const priceRes = await fetch(`${ENDPOINT_PRICE}${priceId}`);
                                 const priceData = await priceRes.json();
-                                const priceValue = priceData?.price?.taxIncludedAmount?.value ?? priceData?.price?.dutyFreeAmount?.value ?? null;
-                                const priceUnit = priceData?.price?.taxIncludedAmount?.unit ?? priceData?.price?.dutyFreeAmount?.unit ?? "";
+
+                                const priceValue =
+                                    priceData?.price?.taxIncludedAmount?.value ??
+                                    priceData?.price?.dutyFreeAmount?.value ??
+                                    null;
+
+                                const priceUnit =
+                                    priceData?.price?.taxIncludedAmount?.unit ??
+                                    priceData?.price?.dutyFreeAmount?.unit ??
+                                    "";
+
                                 return {
                                     ...product,
-                                    resolvedPrice: priceValue ? `${priceValue} ${priceUnit}` : "N/A"
+                                    resolvedPrice: priceValue ? `${priceValue} ${priceUnit}` : "N/A",
                                 };
                             } catch (err) {
                                 console.error("Error fetching price:", err);
@@ -93,26 +93,25 @@ export default function ProductCategory() {
 
                 setProducts(productsWithPrices);
             } catch (err) {
-                console.error("Error fetching products:", err);
+                console.error("Error fetching category products:", err);
                 setProducts([]);
             } finally {
                 setProductsLoading(false);
             }
         };
         fetchProducts();
-    }, [categoryId, ENDPOINT_OFFERING, ENDPOINT_PRICE]);
+    }, [categoryId, ENDPOINT_OFFERINGS_BY_CATEGORY, ENDPOINT_PRICE]);
 
     return (
         <div className="bg-[#fefefe] min-w-[700px]">
             <Header />
 
-            <section className="mx-4 md:mx-20 mt-4 mb-4">
+            <section className="mx-16 md:mx-32 mt-4 mb-4">
                 <div className="flex mb-2">
                     <button
                         onClick={() => navigate(-1)}
                         className="text-blue-900 font-semibold cursor-pointer hover:underline flex items-center"
                     >
-                        {/* Arrow Icon */}
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 28 28"
@@ -125,12 +124,9 @@ export default function ProductCategory() {
                                 clipRule="evenodd"
                             />
                         </svg>
-
-                        {/* Text */}
                         Back
                     </button>
                 </div>
-
 
                 <div className="flex justify-center mb-6">
                     <h2 className="text-3xl font-bold text-center">
@@ -139,13 +135,13 @@ export default function ProductCategory() {
                 </div>
 
                 {productsLoading ? (
-                    <div className="flex justify-center items-center py-20">
+                    <div className="flex justify-center items-center min-h-[50vh]">
                         <ThreeDots height="80" width="80" radius="9" color="#4DB848" ariaLabel="loading" visible={true} />
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-5 gap-x-[8rem] gap-y-[2rem] p-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-x-[6rem] gap-y-[2rem] p-6 justify-center items-center">
                         {products.length > 0 ? (
-                            products.map(product => (
+                            products.map((product) => (
                                 <ProductCard
                                     key={product.id || product._id}
                                     id={product.id}
