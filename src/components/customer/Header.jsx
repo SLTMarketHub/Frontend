@@ -35,18 +35,17 @@ export default function Header() {
   const goToCart = () => navigate("/cart");
   const goToProfile = () =>
     navigate(
-      `/user/profile/${userDetails?.username || authUser?.username || authUser?.name || "user"}`
+      `/user/profile/${userDetails?.username || authUser?.username || "user"}`
     );
-  const goToOrders = () => navigate(`/user/${userDetails.id}/orders`);
+  const goToOrders = () => navigate(`/user/${userDetails?.id}/orders`);
 
   const handleLogout = () => {
     setDropdownOpen(false);
     logout();
-    localStorage.clear();
+    localStorage.removeItem("user");
     navigate("/home");
   };
 
-  // ✅ Extract first name only
   const getFirstName = (fullName) => {
     if (!fullName) return "User";
     return fullName.trim().split(" ")[0];
@@ -55,10 +54,11 @@ export default function Header() {
   return (
     <div className="flex items-center w-full p-4 bg-gradient-to-r from-[#0F55A7] to-[#4DB848] text-white font-bold justify-between relative">
       {/* Logo */}
-      <div className="align-left pr-4 justify-center mt-auto mb-auto text-[26px] z-50 cursor-pointer">
-        <a href="/home">
-          <h1 className="ml-4 text-white">MarketHub</h1>
-        </a>
+      <div
+        className="align-left pr-4 justify-center text-[26px] cursor-pointer"
+        onClick={() => navigate("/home")}
+      >
+        <h1 className="ml-4 text-white">MarketHub</h1>
       </div>
 
       {/* Right Section */}
@@ -91,27 +91,10 @@ export default function Header() {
                       authUser?.username
                   )}
                 </span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className={`w-4 h-4 transition-transform ${
-                    dropdownOpen ? "rotate-180" : "rotate-0"
-                  }`}
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.25a.75.75 0 0 1-1.06 0L5.25 8.27a.75.75 0 0 1-.02-1.06Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
               </button>
 
               {dropdownOpen && (
-                <div
-                  className="absolute right-0 mt-2 bg-white text-black rounded-lg shadow-lg border border-gray-200 w-48 z-50"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <div className="absolute right-0 mt-2 bg-white text-black rounded-lg shadow-lg border border-gray-200 w-48 z-50">
                   <button
                     onClick={goToProfile}
                     className="block w-full text-center px-4 py-2 hover:bg-gray-100 text-black"
@@ -158,10 +141,7 @@ export default function Header() {
               </button>
 
               {dropdownOpen && (
-                <div
-                  className="absolute right-0 mt-2 text-black rounded-lg shadow-lg z-50 bg-gray-100 p-4 w-44"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <div className="absolute right-0 mt-2 text-black rounded-lg shadow-lg z-50 bg-gray-100 p-4 w-44">
                   <button
                     onClick={goToLogin}
                     className="block w-full px-4 py-2 hover:bg-gray-200 border-2 border-blue-600 rounded-lg text-blue-600 font-semibold"
@@ -180,7 +160,7 @@ export default function Header() {
           )}
         </div>
 
-        {/* Cart with count */}
+        {/* Cart Icon */}
         <div className="relative cursor-pointer" onClick={goToCart}>
           <svg
             xmlns="http://www.w3.org/2000/svg"

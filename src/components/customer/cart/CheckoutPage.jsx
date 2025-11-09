@@ -17,7 +17,7 @@ const CheckoutPage = () => {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
-  
+
   // Address form state
   const [addressForm, setAddressForm] = useState({
     street1: "",
@@ -32,12 +32,15 @@ const CheckoutPage = () => {
   useEffect(() => {
     const fetchCustomerData = async () => {
       try {
-        if (customerId) {
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (user?.id) {
           const res = await axios.get(
-            `${import.meta.env.VITE_ENDPOINT_TMF629}/${customerId}`
+            `${import.meta.env.VITE_ENDPOINT_TMF629_BY_ENGAGED_PARTY}/${user.id}`
           );
+
           setCustomerData(res.data);
           setCustomerAddress(res.data.address);
+          console.log("✅ Fetched customer data:", res.data);
         } else {
           setCustomerAddress(null);
         }
@@ -71,20 +74,23 @@ const CheckoutPage = () => {
   }
 
   // Check if customer has a valid address
-  const hasValidAddress = customerAddress && 
+  const hasValidAddress =
+    customerAddress &&
     Object.values(customerAddress).some((val) => val && val.trim() !== "");
 
   // Determine which address to use
   const finalAddress = useNewAddress
     ? manualAddress
     : hasValidAddress
-    ? `${customerAddress.street1 || ""}${customerAddress.street2 ? ", " + customerAddress.street2 : ""}, ${customerAddress.city || ""}, ${customerAddress.state || ""}, ${customerAddress.postalCode || ""}, ${customerAddress.country || ""}`
-    : manualAddress;
+      ? `${customerAddress.street1 || ""}${customerAddress.street2 ? ", " + customerAddress.street2 : ""
+      }, ${customerAddress.city || ""}, ${customerAddress.state || ""}, ${customerAddress.postalCode || ""
+      }, ${customerAddress.country || ""}`
+      : manualAddress;
 
   // Handle address form input changes
   const handleAddressFormChange = (e) => {
     const { name, value } = e.target;
-    setAddressForm(prev => ({
+    setAddressForm((prev) => ({
       ...prev,
       [name]: value
     }));
@@ -92,7 +98,6 @@ const CheckoutPage = () => {
 
   // Save address to backend
   const handleSaveAddress = async () => {
-    // Validate required fields
     if (!addressForm.street1 || !addressForm.city || !addressForm.country) {
       alert("⚠️ Please fill in at least Street Address, City, and Country");
       return;
@@ -108,13 +113,11 @@ const CheckoutPage = () => {
       );
 
       console.log("✅ Address saved successfully:", response.data);
-      
-      // Update local state with new address
+
       setCustomerAddress(addressForm);
       setShowAddressModal(false);
       alert("✅ Address saved successfully!");
-      
-      // Reset form
+
       setAddressForm({
         street1: "",
         street2: "",
@@ -193,18 +196,23 @@ const CheckoutPage = () => {
       );
 
       console.log("✅ Order created successfully:", response.data);
-      alert(`✅ Order Placed Successfully!\nOrder ID: ${response.data.id}`);
-      
-      navigate("/", { 
-        state: { 
-          orderSuccess: true, 
-          orderId: response.data.id 
-        } 
-      });
 
+      // ✅ Remove ordered items from local storage after successful order
+      localStorage.removeItem("cart");
+
+      alert(`✅ Order Placed Successfully!\nOrder ID: ${response.data.id}`);
+
+      // ✅ Redirect to home or order confirmation page
+      navigate("/", {
+        state: {
+          orderSuccess: true,
+          orderId: response.data.id
+        }
+      });
     } catch (error) {
       console.error("❌ Error placing order:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to place order";
+      const errorMessage =
+        error.response?.data?.message || error.message || "Failed to place order";
       alert(`❌ Error placing order: ${errorMessage}`);
     } finally {
       setPlacingOrder(false);
@@ -250,7 +258,6 @@ const CheckoutPage = () => {
               Delivery Address:
             </label>
 
-            {/* If customer HAS an address → show it */}
             {hasValidAddress && !useNewAddress && (
               <div className="bg-gray-100 p-3 rounded-md text-gray-700 mb-2">
                 <p className="text-sm">
@@ -260,7 +267,8 @@ const CheckoutPage = () => {
                   {customerAddress.street1}
                   {customerAddress.street2 && `, ${customerAddress.street2}`}
                   <br />
-                  {customerAddress.city}, {customerAddress.state} {customerAddress.postalCode}
+                  {customerAddress.city}, {customerAddress.state}{" "}
+                  {customerAddress.postalCode}
                   <br />
                   {customerAddress.country}
                 </p>
@@ -281,7 +289,6 @@ const CheckoutPage = () => {
               </div>
             )}
 
-            {/* If using new temporary address */}
             {useNewAddress && (
               <div>
                 <textarea
@@ -300,7 +307,6 @@ const CheckoutPage = () => {
               </div>
             )}
 
-            {/* If customer has NO address → show button to add */}
             {!hasValidAddress && !useNewAddress && (
               <div className="text-center">
                 <p className="text-gray-500 text-sm mb-3">No address found</p>
@@ -351,9 +357,24 @@ const CheckoutPage = () => {
             >
               {placingOrder ? (
                 <>
-                  <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <svg
+                    className="animate-spin h-4 w-4 mr-2"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   Processing...
                 </>
@@ -484,9 +505,26 @@ const CheckoutPage = () => {
                   >
                     {savingAddress ? (
                       <>
-                        <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        <svg
+                          className="animate-spin h-4 w-4 mr-2"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 
+                          5.291A7.962 7.962 0 014 12H0c0 
+                          3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
                         </svg>
                         Saving...
                       </>
@@ -505,3 +543,4 @@ const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
+

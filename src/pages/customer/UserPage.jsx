@@ -46,7 +46,8 @@ const UserPage = () => {
           `${import.meta.env.VITE_ENDPOINT_TMF629_BY_ENGAGED_PARTY}/${userDetails.id}`
         );
 
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok)
+          throw new Error(`HTTP error! Status: ${response.status}`);
 
         const data = await response.json();
         setUserData(data);
@@ -77,12 +78,12 @@ const UserPage = () => {
 
   // ✅ Fetch orders by user (customer) ID
   useEffect(() => {
-    if (!userData?._id) return;
+    if (!userDetails?.id) return;
 
     const fetchOrders = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_ENDPOINT_TMF622_ORDER_BY_CUSTOMER}/${userData._id}`
+          `${import.meta.env.VITE_ENDPOINT_TMF622_ORDER_BY_CUSTOMER}/${userDetails.id}`
         );
 
         if (!response.ok) throw new Error("Failed to fetch orders");
@@ -236,11 +237,18 @@ const UserPage = () => {
                       <p className="font-medium">Order #{order.id}</p>
                       <p className="text-sm text-gray-600">
                         Date:{" "}
-                        {new Date(order.orderDate).toISOString().split("T")[0]} |
-                        Status: {order.status}
+                        {order.orderDate
+                          ? new Date(order.orderDate.$date || order.orderDate)
+                              .toISOString()
+                              .split("T")[0]
+                          : "N/A"}{" "}
+                        | Status: {order.state || "Unknown"}
                       </p>
                       <p className="text-sm text-gray-600">
-                        Total: {order.totalAmount.toFixed(2)}
+                        Total:{" "}
+                        {order.totalAmount
+                          ? order.totalAmount.toFixed(2)
+                          : "N/A"}
                       </p>
                     </li>
                   ))
@@ -309,66 +317,27 @@ const UserPage = () => {
               <hr className="my-3" />
               <h3 className="text-gray-700 font-medium">Address</h3>
 
-              <div>
-                <label className="block text-gray-700">Street 1</label>
-                <input
-                  type="text"
-                  name="street1"
-                  value={editForm.street1}
-                  onChange={handleEditChange}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">Street 2</label>
-                <input
-                  type="text"
-                  name="street2"
-                  value={editForm.street2}
-                  onChange={handleEditChange}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">City</label>
-                <input
-                  type="text"
-                  name="city"
-                  value={editForm.city}
-                  onChange={handleEditChange}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">State</label>
-                <input
-                  type="text"
-                  name="state"
-                  value={editForm.state}
-                  onChange={handleEditChange}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">Postal Code</label>
-                <input
-                  type="text"
-                  name="postalCode"
-                  value={editForm.postalCode}
-                  onChange={handleEditChange}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">Country</label>
-                <input
-                  type="text"
-                  name="country"
-                  value={editForm.country}
-                  onChange={handleEditChange}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-              </div>
+              {[
+                "street1",
+                "street2",
+                "city",
+                "state",
+                "postalCode",
+                "country",
+              ].map((field) => (
+                <div key={field}>
+                  <label className="block text-gray-700 capitalize">
+                    {field.replace(/([A-Z])/g, " $1")}
+                  </label>
+                  <input
+                    type="text"
+                    name={field}
+                    value={editForm[field]}
+                    onChange={handleEditChange}
+                    className="w-full border rounded-lg px-3 py-2"
+                  />
+                </div>
+              ))}
 
               <div className="flex justify-end gap-3 mt-6">
                 <button
