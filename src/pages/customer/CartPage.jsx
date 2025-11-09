@@ -7,20 +7,17 @@ import { useCart } from "../../context/CartContext";
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const { clearCart } = useCart(); // ✅ use context for clearing
-  const [cartItems, setCartItems] = useState([]);
+  const { cart, removeFromCart, updateCartItemQuantity, clearCart } = useCart();
   const [selectedItems, setSelectedItems] = useState([]);
   const [shipping, setShipping] = useState(null);
   const [payment, setPayment] = useState(null);
 
-  // ✅ Load cart items from localStorage only once
+  // Sync selected items with cart whenever cart changes
   useEffect(() => {
-    const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
-    setCartItems(storedCart);
-    setSelectedItems(storedCart); // default select all
-  }, []);
+    setSelectedItems(cart);
+  }, [cart]);
 
-  // ✅ Handle item selection
+  // Toggle selection of a cart item
   const toggleSelectItem = (item) => {
     if (selectedItems.some((i) => i.productId === item.productId)) {
       setSelectedItems(selectedItems.filter((i) => i.productId !== item.productId));
@@ -29,40 +26,27 @@ const CartPage = () => {
     }
   };
 
-  // ✅ Handle quantity change
+  // Handle quantity change
   const handleQuantityChange = (productId, newQty) => {
-    if (newQty < 1) return;
-    const updatedCart = cartItems.map((item) =>
-      item.productId === productId ? { ...item, quantity: newQty } : item
-    );
-    setCartItems(updatedCart);
-
-    setSelectedItems((prev) =>
-      prev.map((i) => (i.productId === productId ? { ...i, quantity: newQty } : i))
-    );
-    localStorage.setItem("cart", JSON.stringify(updatedCart)); // ✅ update localStorage intentionally
+    updateCartItemQuantity(productId, newQty);
   };
 
-  // ✅ Remove an item from cart
+  // Handle item removal
   const handleRemoveItem = (productId) => {
-    const updatedCart = cartItems.filter((item) => item.productId !== productId);
-    setCartItems(updatedCart);
-    setSelectedItems(selectedItems.filter((i) => i.productId !== productId));
-    localStorage.setItem("cart", JSON.stringify(updatedCart)); // ✅ update localStorage intentionally
+    removeFromCart(productId);
   };
 
-  // ✅ Calculate totals
+  // Calculate totals
   const subtotal = selectedItems.reduce((sum, item) => {
     const numericPrice = parseFloat(String(item.price).replace(/[^0-9.]/g, "")) || 0;
-    const qty = item.quantity || 1;
-    return sum + numericPrice * qty;
+    return sum + numericPrice * (item.quantity || 1);
   }, 0);
 
   const discount = subtotal > 10000 ? subtotal * 0.05 : subtotal > 5000 ? 300 : 0;
   const shippingCost = shipping === "standard" ? 300 : shipping === "express" ? 600 : 0;
   const total = subtotal - discount + shippingCost;
 
-  // ✅ Proceed to checkout
+  // Proceed to checkout
   const handleCheckout = () => {
     if (selectedItems.length === 0) {
       alert("⚠️ Please select at least one item to proceed.");
@@ -74,6 +58,7 @@ const CartPage = () => {
     }
 
     const user = JSON.parse(localStorage.getItem("user"));
+
     navigate("/checkout", {
       state: {
         cartItems: selectedItems,
@@ -84,13 +69,8 @@ const CartPage = () => {
       },
     });
 
-    // ✅ Clear cart after checkout
     clearCart();
-    setCartItems([]);
-    setSelectedItems([]);
   };
-
-  const handleGoBack = () => navigate(-1);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -101,17 +81,17 @@ const CartPage = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-3xl font-bold text-gray-800">Your Shopping Cart</h2>
             <button
-              onClick={handleGoBack}
+              onClick={() => navigate(-1)}
               className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg"
             >
               ← Go Back
             </button>
           </div>
 
-          {cartItems.length === 0 ? (
+          {cart.length === 0 ? (
             <p className="text-gray-500">Your cart is empty.</p>
           ) : (
-            cartItems.map((item) => {
+            cart.map((item) => {
               const numericPrice = parseFloat(String(item.price).replace(/[^0-9.]/g, "")) || 0;
               return (
                 <div
@@ -130,7 +110,9 @@ const CartPage = () => {
 
                       <div className="flex items-center gap-2 mt-2">
                         <button
-                          onClick={() => handleQuantityChange(item.productId, item.quantity - 1)}
+                          onClick={() =>
+                            handleQuantityChange(item.productId, (item.quantity || 1) - 1)
+                          }
                           className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
                         >
                           −
@@ -145,7 +127,9 @@ const CartPage = () => {
                           className="w-12 text-center border border-gray-300 rounded"
                         />
                         <button
-                          onClick={() => handleQuantityChange(item.productId, item.quantity + 1)}
+                          onClick={() =>
+                            handleQuantityChange(item.productId, (item.quantity || 1) + 1)
+                          }
                           className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
                         >
                           +
@@ -170,7 +154,7 @@ const CartPage = () => {
             })
           )}
 
-          {/* Shipping */}
+          {/* Shipping Options */}
           <div className="mt-6">
             <h3 className="font-semibold mb-2">Shipping Options</h3>
             <div className="space-y-2">
@@ -197,7 +181,7 @@ const CartPage = () => {
             </div>
           </div>
 
-          {/* Payment */}
+          {/* Payment Options */}
           <div className="mt-6">
             <h3 className="font-semibold mb-2">Payment Method</h3>
             <div className="space-y-2">

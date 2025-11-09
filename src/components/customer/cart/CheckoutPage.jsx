@@ -30,6 +30,7 @@ const CheckoutPage = () => {
 
   // Fetch customer data from backend
   useEffect(() => {
+    console.log("details:", location.state)
     const fetchCustomerData = async () => {
       try {
         const user = JSON.parse(localStorage.getItem("user"));

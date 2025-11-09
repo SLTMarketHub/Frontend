@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
@@ -13,10 +13,12 @@ export default function ProductPage() {
   const [productDetails, setProductDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [relatedLoading, setRelatedLoading] = useState(false);
+  const relatedContainerRef = useRef(null);
 
   const VITE_ENDPOINT_TMF620_OFFERING = import.meta.env.VITE_ENDPOINT_TMF620_OFFERING;
   const PRICE_ENDPOINT = import.meta.env.VITE_ENDPOINT_TMF620_PRICE;
 
+  // Fetch price for a product offering
   const fetchPrice = async (priceId) => {
     try {
       const priceRes = await fetch(`${PRICE_ENDPOINT}${priceId}`);
@@ -39,6 +41,7 @@ export default function ProductPage() {
     }
   };
 
+  // Fetch main product details
   useEffect(() => {
     async function fetchProductDetails() {
       try {
@@ -70,17 +73,28 @@ export default function ProductPage() {
     if (id) fetchProductDetails();
   }, [id, VITE_ENDPOINT_TMF620_OFFERING, PRICE_ENDPOINT]);
 
+  // Fetch related products with dynamic visible count
   const fetchRelatedProducts = async (categoryId, excludeProductId) => {
     setRelatedLoading(true);
     try {
-      const res = await fetch(`${VITE_ENDPOINT_TMF620_OFFERING}?category=${categoryId}`);
+      const res = await fetch(`${VITE_ENDPOINT_TMF620_OFFERING}/byCategory/${categoryId}`);
       const data = await res.json();
 
       if (data && Array.isArray(data.data)) {
         const filtered = data.data.filter((p) => p.id !== excludeProductId);
 
+        // Calculate visible count
+        let visibleCount = 6; // default fallback
+        if (relatedContainerRef.current) {
+          const containerWidth = relatedContainerRef.current.clientWidth;
+          const cardWidth = 256; // 16rem width of ProductCard
+          visibleCount = Math.floor(containerWidth / cardWidth);
+        }
+
+        const limited = filtered.slice(0, visibleCount);
+
         const productsWithPrice = await Promise.all(
-          filtered.map(async (p) => {
+          limited.map(async (p) => {
             let resolvedPrice = "N/A";
             if (p.productOfferingPrice?.length) {
               resolvedPrice = await fetchPrice(p.productOfferingPrice[0].id);
@@ -90,6 +104,8 @@ export default function ProductPage() {
         );
 
         setRelatedProducts(productsWithPrice);
+      } else {
+        setRelatedProducts([]);
       }
     } catch (err) {
       console.error("Error fetching related products:", err);
@@ -98,6 +114,17 @@ export default function ProductPage() {
       setRelatedLoading(false);
     }
   };
+
+  // Update related products on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (productDetails?.category?.[0]?.id) {
+        fetchRelatedProducts(productDetails.category[0].id, productDetails.id);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [productDetails]);
 
   return (
     <div className="bg-[#fefefe] min-w-[700px] flex flex-col min-h-screen">
@@ -114,12 +141,7 @@ export default function ProductPage() {
               onClick={() => navigate(-1)}
               className="text-blue-900 font-semibold cursor-pointer hover:underline flex items-center"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 28 28"
-                fill="currentColor"
-                className="w-5 h-5"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" fill="currentColor" className="w-5 h-5">
                 <path
                   fillRule="evenodd"
                   d="M11.03 3.97a.75.75 0 0 1 0 1.06l-6.22 6.22H21a.75.75 0 0 1 0 1.5H4.81l6.22 6.22a.75.75 0 1 1-1.06 1.06l-7.5-7.5a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 0 1 1.06 0Z"
@@ -131,26 +153,19 @@ export default function ProductPage() {
           </div>
 
           {/* Main Product */}
-          {productDetails && (
-            <div>
-              <Product productDetails={productDetails} />
-            </div>
-          )}
+          {productDetails && <Product productDetails={productDetails} />}
 
-          {/* Divider */}
           <div className="h-px bg-gray-300 my-4" />
 
           {/* Related Products */}
-          <h2 className="text-blue-900 text-3xl font-bold text-left mb-4">
-            More To Love
-          </h2>
+          <h2 className="text-blue-900 text-3xl font-bold text-left mb-4">More To Love</h2>
 
           {relatedLoading ? (
             <div className="flex justify-center items-center py-6">
               <ThreeDots color="#4DB848" height={50} width={50} />
             </div>
           ) : relatedProducts.length > 0 ? (
-            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+            <div ref={relatedContainerRef} className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
               {relatedProducts.map((p) => (
                 <div key={p.id} className="min-w-[16rem] shrink-0 border-0 p-3 rounded-lg shadow">
                   <ProductCard productDetails={p} />
