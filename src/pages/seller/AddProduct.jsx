@@ -4,6 +4,9 @@ import { ArrowLeft, Upload, X } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
 import { useForm } from '../../hooks/seller/useForm';
+import Layout from '../../components/seller/Layout';
+import Header from '../../components/customer/Header';
+import Footer from '../../components/customer/Footer';
 import toast from 'react-hot-toast';
 import { createProductOffering, createProductOfferingPrice } from '../../services/seller/productService';
 
@@ -84,6 +87,9 @@ const AddProduct = () => {
   };
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -185,6 +191,9 @@ const AddProduct = () => {
         </div>
       </form>
     </div>
+     </Layout>
+    <Footer />
+    </>
   );
 };
 

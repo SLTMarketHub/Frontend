@@ -1,9 +1,9 @@
 import { api, upload } from './api';
 
 // TMF620 base paths through API Gateway
-const TMF620_BASE = '/productCatalog/v5';
-const OFFERING_PATH = `${TMF620_BASE}/productOffering`;
-const PRICE_PATH = `${TMF620_BASE}/productOfferingPrice`;
+const TMF620_BASE = 'https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5';
+const OFFERING_PATH = "https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5/productOffering";
+const PRICE_PATH = "https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5/productOfferingPrice";
 
 // Utilities
 const generateId = (prefix) => `${prefix}-${Date.now()}`;
@@ -19,7 +19,7 @@ export async function listProductOfferings({ offset = 0, limit = 50, name = '' }
 export async function getProductOffering(id) {
   const params = { fields: 'id,name,description,lifecycleStatus,productOfferingPrice,category,attachment,createdAt' };
   const { data } = await api.get(`${OFFERING_PATH}/${id}`, { params });
-  return api.get('/productOffering', { params })
+  return api.get('https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5/productOffering', { params })
 }
 
 export async function createProductOffering({ name, description, categoryName, lifecycleStatus = 'Active', isSellable = true, images = [], imageUrls = [] }) {

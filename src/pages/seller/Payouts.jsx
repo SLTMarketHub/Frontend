@@ -3,6 +3,9 @@ import { DollarSign, TrendingUp, Calendar, Download, Filter, Search } from 'luci
 import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
 import Table from '../../components/seller/Table';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatDate } from '../../utils/seller/formatters';
 
 const mockPayouts = [
@@ -76,6 +79,9 @@ const Payouts = () => {
   );
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -164,6 +170,9 @@ const Payouts = () => {
         <Button variant="outline" className="mt-4 w-full">Add New Method</Button>
       </Card>
     </div>
+    </Layout>
+    <Footer />
+    </>
   );
 };
 

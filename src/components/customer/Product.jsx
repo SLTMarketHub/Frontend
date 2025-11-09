@@ -20,40 +20,29 @@ export default function Product({ productDetails }) {
     setTimeout(() => setShow(false), 3000);
   };
 
-  const handleAddToCart = () => {
-    try {
-      const imageSrc =
-        productDetails?.attachment?.[0]?.href
-          ? productDetails.attachment[0].href.startsWith("http")
-            ? productDetails.attachment[0].href
-            : `${BASE_URL}${productDetails.attachment[0].href}`
-          : "/assets/images/placeholderImg.jpg";
+const handleAddToCart = () => {
+  try {
+    const imageSrc =
+      productDetails?.attachment?.[0]?.href
+        ? productDetails.attachment[0].href.startsWith("http")
+          ? productDetails.attachment[0].href
+          : `${BASE_URL}${productDetails.attachment[0].href}`
+        : "/assets/images/placeholderImg.jpg";
 
-      let cart = JSON.parse(localStorage.getItem("cart")) || [];
-      const existingIndex = cart.findIndex(
-        (item) => item.productId === productDetails.id
-      );
+    addToCart({
+      customerId,
+      productId: productDetails.id,
+      name: productDetails.name,
+      price: productDetails.resolvedPrice,
+      image: imageSrc,
+      quantity,
+    });
 
-      if (existingIndex !== -1) {
-        cart[existingIndex].quantity += quantity;
-      } else {
-        cart.push({
-          customerId,
-          productId: productDetails.id,
-          name: productDetails.name,
-          price: productDetails.resolvedPrice,
-          image: imageSrc,
-          quantity,
-        });
-      }
-
-      localStorage.setItem("cart", JSON.stringify(cart));
-      addToCart(quantity);
-      showAlert("success", `Product added to cart!`);
-    } catch {
-      showAlert("error", "Failed to add to cart. Please try again.");
-    }
-  };
+    showAlert("success", `Product added to cart!`);
+  } catch {
+    showAlert("error", "Failed to add to cart. Please try again.");
+  }
+};
 
   const handleBuyNow = async () => {
     try {
@@ -178,11 +167,6 @@ export default function Product({ productDetails }) {
                 +
               </button>
             </div>
-            <p className="ml-6 self-center">
-              {productDetails.availableStock !== undefined
-                ? `Available Stock: ${productDetails.availableStock}`
-                : "Available Stock: No Information"}
-            </p>
           </div>
 
           <div className="flex">
