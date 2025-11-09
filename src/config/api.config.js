@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'https://markethub-api-gateway.onrender.com',
+  BASE_URL: '', // Use relative path for Vite proxy
   
   // TM Forum API Endpoints
   ENDPOINTS: {

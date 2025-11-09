@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://markethub-api-gateway.onrender.com';
-const AUTH_API_URL = `${BASE_URL}/tmf-api`;
+const BASE_URL = '';
+const AUTH_API_URL = `/tmf-api`;
 
 // Create axios instance with default config
 const apiClient = axios.create({
-  baseURL: BASE_URL,
+  baseURL: '/tmf-api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -45,7 +45,7 @@ class AuthService {
   // Login user
   async login(credentials) {
     try {
-      const response = await axios.post(`${AUTH_API_URL}/auth/login`, credentials);
+      const response = await axios.post(`/tmf-api/auth/login`, credentials);
       const { token, refreshToken, user } = response.data;
       
       // Store tokens and user info
@@ -63,7 +63,7 @@ class AuthService {
   // Register new user
   async register(userData) {
     try {
-      const response = await axios.post(`${AUTH_API_URL}/auth/register`, userData);
+      const response = await axios.post(`/tmf-api/auth/register`, userData);
       const { token, refreshToken, user } = response.data;
       
       // Store tokens and user info
@@ -83,7 +83,7 @@ class AuthService {
     try {
       const token = localStorage.getItem('authToken');
       if (token) {
-        await axios.post(`${AUTH_API_URL}/auth/logout`, {}, {
+        await axios.post(`/tmf-api/auth/logout`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }
@@ -104,7 +104,7 @@ class AuthService {
       const refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) throw new Error('No refresh token');
       
-      const response = await axios.post(`${AUTH_API_URL}/auth/refresh`, {
+      const response = await axios.post(`/tmf-api/auth/refresh`, {
         refreshToken
       });
       
@@ -138,7 +138,7 @@ class AuthService {
   // Update user profile
   async updateProfile(userData) {
     try {
-      const response = await apiClient.patch(`${AUTH_API_URL}/auth/profile`, userData);
+      const response = await apiClient.patch(`/auth/profile`, userData);
       localStorage.setItem('user', JSON.stringify(response.data));
       return response.data;
     } catch (error) {
@@ -150,7 +150,7 @@ class AuthService {
   // Change password
   async changePassword(passwords) {
     try {
-      const response = await apiClient.post(`${AUTH_API_URL}/auth/change-password`, passwords);
+      const response = await apiClient.post(`/auth/change-password`, passwords);
       return response.data;
     } catch (error) {
       console.error('Password change error:', error);
@@ -161,7 +161,7 @@ class AuthService {
   // Request password reset
   async requestPasswordReset(email) {
     try {
-      const response = await axios.post(`${AUTH_API_URL}/auth/forgot-password`, { email });
+      const response = await axios.post(`/tmf-api/auth/forgot-password`, { email });
       return response.data;
     } catch (error) {
       console.error('Password reset request error:', error);
@@ -172,7 +172,7 @@ class AuthService {
   // Reset password with token
   async resetPassword(token, newPassword) {
     try {
-      const response = await axios.post(`${AUTH_API_URL}/auth/reset-password`, {
+      const response = await axios.post(`/tmf-api/auth/reset-password`, {
         token,
         newPassword
       });
@@ -186,7 +186,7 @@ class AuthService {
   // Verify email
   async verifyEmail(token) {
     try {
-      const response = await axios.post(`${AUTH_API_URL}/auth/verify-email`, { token });
+      const response = await axios.post(`/tmf-api/auth/verify-email`, { token });
       return response.data;
     } catch (error) {
       console.error('Email verification error:', error);

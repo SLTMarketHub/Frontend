@@ -5,9 +5,9 @@
 
 // Common Configuration
 export const ENV_CONFIG = {
-  BASE_URL: import.meta.env.VITE_BASE_URL || 'https://markethub-api-gateway.onrender.com',
+  BASE_URL: import.meta.env.VITE_BASE_URL || '', // Use relative path for Vite proxy
   ENV: import.meta.env.VITE_ENV || 'production',
-  AUTH_SERVICE_URL: import.meta.env.VITE_AUTH_SERVICE_URL || 'https://markethub-api-gateway.onrender.com/tmf-api/auth',
+  AUTH_SERVICE_URL: import.meta.env.VITE_AUTH_SERVICE_URL || '/tmf-api/auth',
 };
 
 // TMF620 - Product Catalog Management
