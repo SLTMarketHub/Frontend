@@ -26,7 +26,7 @@ import Modal, { ConfirmModal } from '../../components/common/Modal';
 import { LoadingState } from '../../components/common/LoadingSpinner';
 import { formatDate, formatCurrency, getStatusColor, getRelativeTime } from '../../utils/formatters';
 import useToast from '../../hooks/useToast';
-import { tmf629AdminService, tmf668AdminService, tmf681AdminService } from '../../services/admin';
+import { tmf629AdminService, tmf668AdminService, tmf681AdminService, userManagementService } from '../../services/admin';
 import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
 
 const Users = () => {
@@ -59,77 +59,29 @@ const Users = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const params = {
+      // Use the new userManagementService for cleaner code
+      const filters = {
+        role: roleFilter,
+        status: userFilter !== 'all' ? userFilter : undefined,
+        search: searchTerm,
         limit: 100,
-        offset: 0,
-        ...(userFilter !== 'all' && { status: userFilter }),
-        ...(searchTerm && { 'name': searchTerm })
+        offset: 0
       };
 
-      // Fetch customers and sellers based on role filter
-      let allUsers = [];
-      
-      if (roleFilter === 'all' || roleFilter === 'customer') {
-        const customerResponse = await tmf629AdminService.listCustomers(params);
-        const customers = (Array.isArray(customerResponse) ? customerResponse : customerResponse.items || []).map(c => ({
-          id: c.id,
-          name: c.name || `${c.givenName} ${c.familyName}` || 'Unknown',
-          email: c.contactMedium?.find(m => m.mediumType === 'email')?.characteristic?.emailAddress || c.email || 'N/A',
-          phone: c.contactMedium?.find(m => m.mediumType === 'mobile')?.characteristic?.phoneNumber || c.phone || 'N/A',
-          role: 'customer',
-          status: c.status || 'active',
-          orders: c.characteristic?.find(ch => ch.name === 'totalOrders')?.value || 0,
-          spent: c.characteristic?.find(ch => ch.name === 'totalSpent')?.value || 0,
-          joinedAt: c.validFor?.startDateTime || c.createdDate || new Date().toISOString(),
-          address: c.postalAddress?.[0]?.formattedAddress || 'N/A',
-          verified: c.characteristic?.find(ch => ch.name === 'verified')?.value || false
-        }));
-        allUsers = [...allUsers, ...customers];
-      }
-
-      if (roleFilter === 'all' || roleFilter === 'seller') {
-        const partnershipResponse = await tmf668AdminService.listPartnerships(params);
-        const sellers = (Array.isArray(partnershipResponse) ? partnershipResponse : partnershipResponse.items || []).map(s => ({
-          id: s.id,
-          name: s.name || 'Unknown Seller',
-          email: s.contact?.contactMedium?.find(m => m.mediumType === 'email')?.characteristic?.emailAddress || 'N/A',
-          phone: s.contact?.contactMedium?.find(m => m.mediumType === 'phone')?.characteristic?.phoneNumber || 'N/A',
-          role: 'seller',
-          status: s.status || 'active',
-          products: s.characteristic?.find(ch => ch.name === 'totalProducts')?.value || 0,
-          revenue: s.characteristic?.find(ch => ch.name === 'totalRevenue')?.value || 0,
-          joinedAt: s.agreementPeriod?.startDateTime || s.createdDate || new Date().toISOString(),
-          storeName: s.organization?.tradingName || s.name,
-          verified: s.status === 'active'
-        }));
-        allUsers = [...allUsers, ...sellers];
-      }
-
-      // Apply additional filtering if search term exists in email
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        allUsers = allUsers.filter(u => 
-          u.name?.toLowerCase().includes(term) || 
-          u.email?.toLowerCase().includes(term) ||
-          u.phone?.includes(term)
-        );
-      }
-
-      setUsers(allUsers);
-
-      // Fetch statistics
-      const [customerStats, partnershipStats] = await Promise.all([
-        tmf629AdminService.getCustomerStatistics(),
-        tmf668AdminService.getPartnershipStatistics()
+      // Fetch users and statistics using the new service
+      const [allUsers, statistics] = await Promise.all([
+        userManagementService.getAllUsers(filters),
+        userManagementService.getUserStatistics()
       ]);
 
+      setUsers(allUsers);
       setStats({
-        totalUsers: (customerStats.totalCustomers || 0) + (partnershipStats.totalPartnerships || 0),
-        activeCustomers: customerStats.activeCustomers || 0,
-        activeSellers: partnershipStats.activePartnerships || 0,
-        pendingApprovals: partnershipStats.pendingPartnerships || 0,
-        newThisMonth: customerStats.newCustomersThisMonth || 0,
-        growthRate: customerStats.customerGrowthRate || 0
+        totalUsers: statistics.totalUsers,
+        activeCustomers: statistics.activeCustomers,
+        activeSellers: statistics.activeSellers,
+        pendingApprovals: statistics.pendingSellers,
+        newThisMonth: statistics.newUsersThisMonth,
+        growthRate: statistics.overallGrowthRate
       });
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -160,26 +112,15 @@ const Users = () => {
   const confirmSuspend = async () => {
     try {
       const newStatus = selectedUser.status === 'suspended' ? 'active' : 'suspended';
+      const reason = `Admin action: ${newStatus === 'suspended' ? 'Account suspended' : 'Account reactivated'}`;
       
-      if (selectedUser.role === 'customer') {
-        await tmf629AdminService.updateCustomer(selectedUser.id, {
-          status: newStatus,
-          characteristic: [{
-            name: 'suspensionReason',
-            value: `Admin action: ${newStatus === 'suspended' ? 'Account suspended' : 'Account reactivated'}`,
-            '@type': 'Characteristic'
-          }]
-        });
-      } else {
-        await tmf668AdminService.updatePartnership(selectedUser.id, {
-          status: newStatus,
-          note: [{
-            text: `Admin action: ${newStatus === 'suspended' ? 'Account suspended' : 'Account reactivated'}`,
-            date: new Date().toISOString(),
-            author: 'Admin'
-          }]
-        });
-      }
+      // Use the new userManagementService
+      await userManagementService.updateUserStatus(
+        selectedUser.id,
+        selectedUser.role,
+        newStatus,
+        reason
+      );
 
       setUsers(users.map(u => 
         u.id === selectedUser.id ? { ...u, status: newStatus } : u
@@ -188,28 +129,44 @@ const Users = () => {
       success(`User ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`);
       setShowSuspendConfirm(false);
     } catch (err) {
+      console.error('Error updating user status:', err);
       error('Failed to update user status');
     }
   };
 
-  const handleExport = (type = 'all') => {
-    const dataToExport = type === 'selected' 
-      ? users.filter(u => selectedUsers.includes(u.id))
-      : users;
+  const handleExport = async (type = 'all') => {
+    try {
+      let exportData;
+      
+      if (type === 'selected') {
+        // Export selected users
+        const dataToExport = users.filter(u => selectedUsers.includes(u.id));
+        exportData = dataToExport.map(u => ({
+          Name: u.name,
+          Email: u.email,
+          Phone: u.phone,
+          Role: u.role,
+          Status: u.status,
+          'Total Orders': u.orders || u.products,
+          'Total Spent/Revenue': u.role === 'seller' ? u.revenue : u.spent,
+          'Joined Date': u.joinedAt
+        }));
+      } else {
+        // Export all users using the service
+        const filters = {
+          role: roleFilter,
+          status: userFilter !== 'all' ? userFilter : undefined,
+          search: searchTerm
+        };
+        exportData = await userManagementService.getUsersForExport(filters);
+      }
 
-    const exportData = dataToExport.map(u => ({
-      Name: u.name,
-      Email: u.email,
-      Phone: u.phone,
-      Role: u.role,
-      Status: u.status,
-      'Total Orders': u.orders,
-      'Total Spent/Revenue': u.role === 'seller' ? u.revenue : u.spent,
-      'Joined Date': u.joinedAt
-    }));
-
-    exportToCSV(exportData, 'users_export');
-    success('Users exported successfully');
+      exportToCSV(exportData, 'users_export');
+      success('Users exported successfully');
+    } catch (err) {
+      console.error('Error exporting users:', err);
+      error('Failed to export users');
+    }
   };
 
   const userColumns = [
