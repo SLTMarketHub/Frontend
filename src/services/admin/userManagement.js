@@ -20,6 +20,8 @@ APIs Used:
 */
 
 import { apiClient } from "../authService";
+import axios from 'axios';
+import { axiosInstance } from "../axiosInstance";
 
 // ============================================================================
 // LOCAL STATUS CACHE (Fallback when API doesn't persist status properly)
@@ -79,6 +81,145 @@ const clearOldCache = () => {
     localStorage.setItem(STATUS_CACHE_KEY, JSON.stringify(cache));
   } catch (error) {
     console.error('Error clearing old cache:', error);
+  }
+};
+
+// ============================================================================
+// CUSTOMER ENRICHMENT FROM ORDERS & BILLING DATA
+// ============================================================================
+
+/**
+ * Get customer order and billing statistics
+ * @param {string} customerId - Customer ID
+ * @returns {Object} Customer order stats
+ */
+export const getCustomerOrderStats = async (customerId, customerData = null) => {
+  try {
+    console.log(`Fetching order stats for customer ${customerId}...`);
+    
+    // Get the auth user ID from customer data if provided
+    const authUserId = customerData?.engagedParty?.id || customerId;
+    console.log(`Customer ID: ${customerId}, Auth User ID: ${authUserId}`);
+    
+    // Fetch all bills and orders from the APIs (same way as dashboard)
+    const [billsResponse, ordersResponse] = await Promise.allSettled([
+      axiosInstance.get("customerBill/v5/customerBill"),
+      axiosInstance.get("productOrdering/v1/productOrder")
+    ]);
+
+    console.log(`Bills API response for ${customerId}:`, 
+      billsResponse.status === 'fulfilled' ? billsResponse.value.data : billsResponse.reason);
+    console.log(`Orders API response for ${customerId}:`, 
+      ordersResponse.status === 'fulfilled' ? ordersResponse.value.data : ordersResponse.reason);
+
+    const allBills = billsResponse.status === 'fulfilled' && Array.isArray(billsResponse.value.data) 
+      ? billsResponse.value.data : [];
+    const allOrders = ordersResponse.status === 'fulfilled' && Array.isArray(ordersResponse.value.data?.productOrder) 
+      ? ordersResponse.value.data.productOrder : [];
+
+    // Debug: Log the structure of bills and orders to understand how to filter
+    if (allBills.length > 0) {
+      console.log(`Sample bill structure:`, {
+        fullBill: allBills[0],
+        billKeys: Object.keys(allBills[0]),
+        relatedParty: allBills[0].relatedParty,
+        customer: allBills[0].customer,
+        billingAccount: allBills[0].billingAccount
+      });
+    }
+    
+    if (allOrders.length > 0) {
+      console.log(`Sample order structure:`, {
+        fullOrder: allOrders[0],
+        orderKeys: Object.keys(allOrders[0]),
+        relatedParty: allOrders[0].relatedParty,
+        customer: allOrders[0].customer,
+        billingAccount: allOrders[0].billingAccount
+      });
+    }
+
+    // Filter bills and orders for this specific customer using auth user ID
+    const customerBills = allBills.filter(bill => {
+      const billCustomerId = bill.relatedParty?.find(party => party.role === 'customer' || party.role === 'Customer')?.id;
+      const altCustomerId = bill.customer?.id || bill.billingAccount?.relatedParty?.find(p => p.role === 'customer')?.id;
+      
+      console.log(`Bill filtering for ${customerId}:`, {
+        billId: bill.id,
+        billCustomerId,
+        altCustomerId,
+        authUserId,
+        relatedParty: bill.relatedParty,
+        matches: billCustomerId === customerId || billCustomerId === authUserId || altCustomerId === customerId || altCustomerId === authUserId
+      });
+      
+      return billCustomerId === customerId || billCustomerId === authUserId || altCustomerId === customerId || altCustomerId === authUserId;
+    });
+
+    const customerOrders = allOrders.filter(order => {
+      const orderCustomerId = order.relatedParty?.find(party => party.role === 'customer' || party.role === 'Customer')?.id;
+      const altCustomerId = order.customer?.id || order.billingAccount?.relatedParty?.find(p => p.role === 'customer')?.id;
+      
+      console.log(`Order filtering for ${customerId}:`, {
+        orderId: order.id,
+        orderCustomerId,
+        altCustomerId,
+        authUserId,
+        relatedParty: order.relatedParty,
+        matches: orderCustomerId === customerId || orderCustomerId === authUserId || altCustomerId === customerId || altCustomerId === authUserId
+      });
+      
+      return orderCustomerId === customerId || orderCustomerId === authUserId || altCustomerId === customerId || altCustomerId === authUserId;
+    });
+
+    console.log(`Found ${customerBills.length} bills and ${customerOrders.length} orders for customer ${customerId}`);
+    
+    if (customerBills.length > 0) {
+      console.log(`Sample bill for ${customerId}:`, customerBills[0]);
+    }
+    if (customerOrders.length > 0) {
+      console.log(`Sample order for ${customerId}:`, customerOrders[0]);
+    }
+
+    // Calculate total spent from settled bills
+    const totalSpent = customerBills
+      .filter(bill => bill.state === 'settled')
+      .reduce((sum, bill) => {
+        const amount = bill.taxIncludedAmount?.amount || 0;
+        return sum + parseFloat(amount);
+      }, 0);
+
+    // Get last order date
+    const lastOrderDate = customerOrders.length > 0 
+      ? customerOrders.reduce((latest, order) => {
+          const orderDate = new Date(order.orderDate || 0);
+          return orderDate > new Date(latest) ? order.orderDate : latest;
+        }, customerOrders[0].orderDate)
+      : null;
+
+    // Calculate average order value
+    const averageOrderValue = totalSpent > 0 && customerOrders.length > 0 
+      ? totalSpent / customerOrders.length 
+      : 0;
+
+    const result = {
+      orders: customerOrders.length,
+      spent: totalSpent,
+      lastOrderDate,
+      averageOrderValue,
+      verified: customerBills.length > 0 // Customer is verified if they have billing history
+    };
+
+    console.log(`Order stats for customer ${customerId}:`, result);
+    return result;
+  } catch (error) {
+    console.error(`Error fetching order stats for customer ${customerId}:`, error);
+    return {
+      orders: 0,
+      spent: 0,
+      lastOrderDate: null,
+      averageOrderValue: 0,
+      verified: false
+    };
   }
 };
 
@@ -151,6 +292,32 @@ export const getUserStatistics = async () => {
       );
     }).length;
 
+    const pendingCustomers = customers.filter((c) => {
+      const status = c.status || c.lifecycleStatus || c.state;
+      const isPending = (
+        status === "pending" ||
+        status === "Pending" ||
+        status === "PENDING" ||
+        status === "pendingapproval" ||
+        status === "PendingApproval" ||
+        status === "PENDINGAPPROVAL"
+      );
+      
+      // Debug logging for pending customers
+      if (isPending) {
+        console.log(`Found pending customer:`, {
+          id: c._id || c.id,
+          name: c.name,
+          status: status,
+          createdDate: c.validFor?.startDateTime || c.createdDate
+        });
+      }
+      
+      return isPending;
+    }).length;
+    
+    console.log(`DEBUG: Total customers: ${totalCustomers}, Pending customers: ${pendingCustomers}`);
+
     const verifiedCustomers = customers.filter((c) => {
       const verified = c.characteristic?.find((ch) => ch.name === "verified");
       return verified?.value === true || verified?.value === "true";
@@ -188,19 +355,34 @@ export const getUserStatistics = async () => {
       if (typeof status === 'string') {
         status = status.toLowerCase();
       }
+      
+      // Debug logging for all sellers
+      console.log(`Seller ${p._id || p.id} status: "${status}"`);
+      
       if (status === 'active') activeSellers++;
-      else if (status === 'pending' || status === 'pendingapproval') pendingSellers++;
+      else if (status === 'pending' || status === 'pendingapproval') {
+        pendingSellers++;
+        console.log(`Found pending seller:`, {
+          id: p._id || p.id,
+          name: p.name || p.organization?.tradingName,
+          status: status
+        });
+      }
       else if (status === 'suspended' || status === 'inactive') suspendedSellers++;
     });
+    
+    console.log(`DEBUG: Total sellers: ${totalSellers}, Active: ${activeSellers}, Pending: ${pendingSellers}, Suspended: ${suspendedSellers}`);
 
-    // Fallback if all are zero
-    if (activeSellers === 0 && pendingSellers === 0 && totalSellers > 0) {
+    // Fallback if all are zero AND we don't have cached statuses
+    if (activeSellers === 0 && pendingSellers === 0 && suspendedSellers === 0 && totalSellers > 0) {
       const hasStatusField = partnerships.some(
         (p) => p.status || p.lifecycleStatus || p.state
       );
-      if (!hasStatusField) {
+      const hasCachedStatus = partnerships.some(p => getCachedStatus(p._id || p.id));
+      
+      if (!hasStatusField && !hasCachedStatus) {
         console.warn(
-          "No status field found on partnerships – defaulting to 80% active / 20% pending"
+          "No status field found on partnerships and no cached statuses – defaulting to 80% active / 20% pending"
         );
         activeSellers = Math.floor(totalSellers * 0.8);
         pendingSellers = totalSellers - activeSellers;
@@ -239,6 +421,7 @@ export const getUserStatistics = async () => {
       totalCustomers,
       activeCustomers,
       suspendedCustomers,
+      pendingCustomers,
       totalSellers,
       activeSellers,
       pendingSellers,
@@ -251,10 +434,12 @@ export const getUserStatistics = async () => {
       "Total Users": totalCustomers + totalSellers,
       "Active Customers": activeCustomers,
       "Active Sellers": activeSellers,
+      "Pending Customers": pendingCustomers,
       "Pending Sellers": pendingSellers,
+      "Total Pending (pendingUsers)": pendingCustomers + pendingSellers,
     });
 
-    return {
+    const finalStats = {
       // Totals
       totalUsers: totalCustomers + totalSellers,
       totalCustomers,
@@ -269,6 +454,8 @@ export const getUserStatistics = async () => {
       suspendedUsers: suspendedCustomers + suspendedSellers,
       suspendedCustomers,
       suspendedSellers,
+      pendingUsers: pendingCustomers + pendingSellers,
+      pendingCustomers,
       pendingSellers,
       verifiedCustomers,
 
@@ -296,6 +483,9 @@ export const getUserStatistics = async () => {
         100
       ).toFixed(1),
     };
+    
+    console.log("FINAL STATISTICS BEING RETURNED:", finalStats);
+    return finalStats;
   } catch (error) {
     console.error("Error fetching user statistics:", error);
     return {
@@ -308,6 +498,8 @@ export const getUserStatistics = async () => {
       suspendedUsers: 0,
       suspendedCustomers: 0,
       suspendedSellers: 0,
+      pendingUsers: 0,
+      pendingCustomers: 0,
       pendingSellers: 0,
       verifiedCustomers: 0,
       newUsersThisMonth: 0,
@@ -368,37 +560,116 @@ export const getAllUsers = async (filters = {}) => {
         ? customersResponse.data
         : [];
 
-      const formattedCustomers = customers.map((c) => ({
-        id: c._id || c.id,
-        _id: c._id || c.id,
-        name: c.name || `${c.givenName || ""} ${c.familyName || ""}`.trim() || "Unknown",
-        email:
-          c.contactMedium?.find((m) => m.mediumType === "email")?.characteristic
-            ?.emailAddress ||
-          c.email ||
-          "N/A",
-        phone:
-          c.contactMedium?.find((m) => m.mediumType === "mobile")?.characteristic
-            ?.phoneNumber ||
-          c.phone ||
-          "N/A",
-        role: "customer",
-        status: c.status || "active",
-        joinedAt: c.validFor?.startDateTime || c.createdDate || new Date().toISOString(),
+      const formattedCustomers = customers.map((c) => {
+        const customerId = c._id || c.id;
         
-        // Customer-specific fields
-        orders: c.characteristic?.find((ch) => ch.name === "totalOrders")?.value || 0,
-        spent: c.characteristic?.find((ch) => ch.name === "totalSpent")?.value || 0,
-        address: c.postalAddress?.[0]?.formattedAddress || "N/A",
-        verified: c.characteristic?.find((ch) => ch.name === "verified")?.value || false,
+        // Check for customer status with smart defaults
+        let customerStatus = c.status || c.lifecycleStatus || c.state;
         
-        // Additional details
-        lastOrderDate: c.characteristic?.find((ch) => ch.name === "lastOrderDate")?.value,
-        averageOrderValue: c.characteristic?.find((ch) => ch.name === "averageOrderValue")?.value || 0,
+        // Check for status in characteristics if not found at top level
+        if (!customerStatus && c.characteristic) {
+          const statusChar = c.characteristic.find(ch => 
+            ch.name === 'status' || ch.name === 'lifecycleStatus' || ch.name === 'state'
+          );
+          customerStatus = statusChar?.value;
+        }
         
-        // Raw data for detailed view
-        rawData: c,
-      }));
+        // If still no status found, use smart defaults based on creation date
+        if (!customerStatus) {
+          const createdDate = new Date(c.validFor?.startDateTime || c.createdDate || 0);
+          const now = new Date();
+          const daysSinceCreated = (now - createdDate) / (1000 * 60 * 60 * 24);
+          
+          // If created recently (less than 7 days) and no status, assume pending
+          // Otherwise, assume active (existing customers)
+          if (daysSinceCreated < 7) {
+            customerStatus = "pending";
+            console.log(`Customer ${customerId} has no status field, defaulting to 'pending' (created ${daysSinceCreated.toFixed(1)} days ago)`);
+          } else {
+            customerStatus = "active";
+            console.log(`Customer ${customerId} has no status field, defaulting to 'active' (created ${daysSinceCreated.toFixed(1)} days ago)`);
+          }
+        }
+        
+        // Normalize status values
+        if (typeof customerStatus === 'string') {
+          customerStatus = customerStatus.toLowerCase();
+        }
+        
+        // Extract email with correct structure
+        let email = "N/A";
+        if (c.contactMedium && c.contactMedium.length > 0) {
+          const contact = c.contactMedium[0];
+          email = contact.emailAddress || "N/A";
+        }
+        
+        // Extract phone with correct structure  
+        let phone = "N/A";
+        if (c.contactMedium && c.contactMedium.length > 0) {
+          const contact = c.contactMedium[0];
+          phone = contact.phoneNumber || "N/A";
+        }
+        
+        // Extract address with correct structure
+        let address = "N/A";
+        if (c.address) {
+          const addressParts = [
+            c.address.street1,
+            c.address.street2,
+            c.address.city,
+            c.address.state,
+            c.address.postalCode
+          ].filter(part => part && part.trim() !== "");
+          
+          address = addressParts.length > 0 ? addressParts.join(", ") : "N/A";
+        }
+        
+        // Extract joined date with correct structure
+        let joinedAt = new Date().toISOString();
+        if (c.createdAt) {
+          joinedAt = c.createdAt;
+        } else if (c.validFor?.startDateTime) {
+          joinedAt = c.validFor.startDateTime;
+        } else if (c.createdDate) {
+          joinedAt = c.createdDate;
+        }
+        
+        // Debug: Log extracted contact information
+        console.log(`DEBUG: Extracted customer data for ${customerId}:`, {
+          email: email,
+          phone: phone,
+          address: address,
+          joinedAt: joinedAt,
+          hasContactMedium: !!c.contactMedium,
+          hasAddress: !!c.address,
+          hasCreatedAt: !!c.createdAt,
+          hasCharacteristic: !!c.characteristic
+        });
+        
+        return {
+          id: customerId,
+          _id: customerId,
+          name: c.name || `${c.givenName || ""} ${c.familyName || ""}`.trim() || "Unknown",
+          email: email,
+          phone: phone,
+          role: "customer",
+          status: customerStatus,
+          joinedAt: joinedAt,
+          
+          // Customer-specific fields
+          orders: c.characteristic?.find((ch) => ch.name === "totalOrders")?.value || 0,
+          spent: c.characteristic?.find((ch) => ch.name === "totalSpent")?.value || 0,
+          address: address,
+          verified: c.characteristic?.find((ch) => ch.name === "verified")?.value || false,
+          
+          // Additional details
+          lastOrderDate: c.characteristic?.find((ch) => ch.name === "lastOrderDate")?.value,
+          averageOrderValue: c.characteristic?.find((ch) => ch.name === "averageOrderValue")?.value || 0,
+          
+          // Raw data for detailed view
+          rawData: c,
+        };
+      });
 
       allUsers = [...allUsers, ...formattedCustomers];
     }
@@ -550,6 +821,70 @@ export const getAllUsers = async (filters = {}) => {
   } catch (error) {
     console.error("Error fetching users:", error);
     return [];
+  }
+};
+
+/**
+ * Enhanced customer data with order/billing information
+ * @param {Array} customers - Array of customer objects from getAllUsers
+ * @returns {Array} Customers with enhanced order/billing data
+ */
+export const getCustomersWithOrderData = async (customers = []) => {
+  try {
+    const customerIds = customers.filter(u => u.role === 'customer').map(u => u.id);
+    
+    if (customerIds.length === 0) {
+      return customers;
+    }
+
+    console.log(`Fetching order data for ${customerIds.length} customers...`);
+    
+    // Fetch order stats for all customers with their raw data
+    const orderStatsPromises = customers.filter(c => c.role === 'customer').map(customer => 
+      getCustomerOrderStats(customer.id, customer.rawData)
+    );
+    const orderStatsResults = await Promise.allSettled(orderStatsPromises);
+
+    // Create a map of customer ID to order stats
+    const orderStatsMap = {};
+    customers.filter(c => c.role === 'customer').forEach((customer, index) => {
+      const result = orderStatsResults[index];
+      if (result.status === 'fulfilled') {
+        orderStatsMap[customer.id] = result.value;
+      } else {
+        console.warn(`Failed to fetch order stats for customer ${customer.id}:`, result.reason);
+        orderStatsMap[customer.id] = {
+          orders: 0,
+          spent: 0,
+          lastOrderDate: null,
+          averageOrderValue: 0,
+          verified: false
+        };
+      }
+    });
+
+    // Enhance customers with order data
+    return customers.map(user => {
+      if (user.role === 'customer' && orderStatsMap[user.id]) {
+        const orderStats = orderStatsMap[user.id];
+        return {
+          ...user,
+          orders: orderStats.orders,
+          spent: orderStats.spent,
+          lastOrderDate: orderStats.lastOrderDate,
+          averageOrderValue: orderStats.averageOrderValue,
+          verified: orderStats.verified,
+          // Keep the original values as fallback
+          _originalOrders: user.orders,
+          _originalSpent: user.spent,
+          _originalVerified: user.verified
+        };
+      }
+      return user;
+    });
+  } catch (error) {
+    console.error('Error enhancing customer data with order information:', error);
+    return customers; // Return original data if enhancement fails
   }
 };
 
@@ -1056,6 +1391,42 @@ export const rejectSeller = async (sellerId, reason = "Admin rejected seller acc
 };
 
 /**
+ * Approve a pending customer
+ * @param {string} customerId - Customer ID
+ * @param {string} reason - Approval reason
+ * @returns {Object} Updated customer data
+ */
+export const approveCustomer = async (customerId, reason = "Admin approved customer account") => {
+  try {
+    console.log(`Approving customer: ${customerId}`);
+    const result = await updateUserStatus(customerId, "customer", "active", reason);
+    console.log(`Customer ${customerId} approved successfully`);
+    return result;
+  } catch (error) {
+    console.error(`Error approving customer ${customerId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Reject a pending customer
+ * @param {string} customerId - Customer ID
+ * @param {string} reason - Rejection reason
+ * @returns {Object} Updated customer data
+ */
+export const rejectCustomer = async (customerId, reason = "Admin rejected customer account") => {
+  try {
+    console.log(`Rejecting customer: ${customerId}`);
+    const result = await updateUserStatus(customerId, "customer", "rejected", reason);
+    console.log(`Customer ${customerId} rejected successfully`);
+    return result;
+  } catch (error) {
+    console.error(`Error rejecting customer ${customerId}:`, error);
+    throw error;
+  }
+};
+
+/**
  * Manually set seller status (for testing/admin purposes when API fails)
  * @param {string} sellerId - Seller ID
  * @param {string} status - Status to set
@@ -1126,12 +1497,15 @@ export const debugPartnershipAPI = async () => {
 export default {
   getUserStatistics,
   getAllUsers,
+  getCustomersWithOrderData,
   getUserDetails,
   updateUserStatus,
   suspendUser,
   activateUser,
   approveSeller,
   rejectSeller,
+  approveCustomer,
+  rejectCustomer,
   getUserGrowthTrend,
   getUserActivity,
   getUsersForExport,

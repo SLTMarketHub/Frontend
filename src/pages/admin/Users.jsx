@@ -79,24 +79,47 @@ const Users = () => {
         console.log('Sample user:', allUsers[0]);
       }
 
+      // Enhance customer data with real order/billing information
+      console.log('Enhancing customer data with order information...');
+      const enhancedUsers = await userManagementService.getCustomersWithOrderData(allUsers);
+      console.log('Enhanced users:', enhancedUsers.length, 'users');
+      
+      // Log a sample enhanced customer to see the difference
+      const sampleCustomer = enhancedUsers.find(u => u.role === 'customer');
+      if (sampleCustomer) {
+        console.log('Sample enhanced customer:', sampleCustomer);
+      }
+
       console.log('Statistics received from service:', statistics);
+      console.log('Detailed statistics breakdown:', {
+        pendingUsers: statistics.pendingUsers,
+        pendingCustomers: statistics.pendingCustomers,
+        pendingSellers: statistics.pendingSellers,
+        totalUsers: statistics.totalUsers,
+        activeCustomers: statistics.activeCustomers,
+        activeSellers: statistics.activeSellers
+      });
       console.log('Stats being set:', {
         totalUsers: statistics.totalUsers,
         activeCustomers: statistics.activeCustomers,
         activeSellers: statistics.activeSellers,
-        pendingApprovals: statistics.pendingSellers,
+        pendingApprovals: statistics.pendingUsers,
         newThisMonth: statistics.newUsersThisMonth,
         growthRate: statistics.overallGrowthRate
       });
 
-      setUsers(allUsers);
+      setUsers(enhancedUsers);
       setStats({
         totalUsers: statistics.totalUsers,
         activeCustomers: statistics.activeCustomers,
         activeSellers: statistics.activeSellers,
-        pendingApprovals: statistics.pendingSellers,
+        pendingApprovals: statistics.pendingUsers,
         newThisMonth: statistics.newUsersThisMonth,
         growthRate: statistics.overallGrowthRate
+      });
+      
+      console.log('Final stats state after setting:', {
+        pendingApprovals: statistics.pendingUsers
       });
     } catch (err) {
       console.error('Error fetching users:', err);
