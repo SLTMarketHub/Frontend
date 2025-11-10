@@ -1,155 +1,146 @@
 import React, { useState, useEffect } from 'react';
-import {
-  DollarSign,
-  ShoppingCart,
-  TrendingUp,
-  Users,
-  Download,
-  Calendar,
-} from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+import { Download, DollarSign, ShoppingCart, TrendingUp, Users } from 'lucide-react';
 import Card, { StatsCard } from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import DataTable from '../../components/common/DataTable';
-import { LoadingState, SkeletonCard } from '../../components/common/LoadingSpinner';
+import { LoadingState } from '../../components/common/LoadingSpinner';
 import { formatCurrency, formatNumber, formatPercentage } from '../../utils/formatters';
-import { exportToCSV, exportToPDF, exportSalesReportPDF } from '../../utils/exportUtils';
-import { CHART_COLORS, TIME_PERIODS } from '../../utils/constants';
+import { exportSalesReportPDF, exportToCSV, exportToPDF } from '../../utils/exportUtils';
+import useToast from '../../hooks/useToast';
+import adminDashboardService from '../../services/admin/adminDashboardService';
 import {
   mockOverviewStats,
-  mockSalesChartData,
   mockTopProducts,
   mockTopCategories,
-  mockRevenueByCategory,
 } from '../../utils/mockData';
-import {
-  tmf622AdminService,
-  tmf629AdminService,
-  tmf678AdminService,
-  tmf620AdminService,
-} from '../../services/admin';
+
+const PERIOD_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+];
 
 const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('monthly');
   const [overviewStats, setOverviewStats] = useState(null);
-  const [salesData, setSalesData] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [topCategories, setTopCategories] = useState([]);
-  const [revenueByCategory, setRevenueByCategory] = useState([]);
+  const { success, error } = useToast();
 
   useEffect(() => {
-    fetchAnalyticsData();
+    loadAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPeriod]);
 
-  const fetchAnalyticsData = async () => {
+  const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const [orderStats, customerStats, billingStats, productStats] = await Promise.all([
-        tmf622AdminService.getOrderStatistics({ period: selectedPeriod }),
-        tmf629AdminService.getCustomerStatistics({ period: selectedPeriod }),
-        tmf678AdminService.getBillingStatistics({ period: selectedPeriod }),
-        tmf620AdminService.getProductStats(),
+      const [salesResp, productsResp, categoriesResp] = await Promise.all([
+        adminDashboardService.getSalesReport(selectedPeriod),
+        adminDashboardService.getTopProducts(10),
+        adminDashboardService.getTopCategories(10),
       ]);
 
-      const derivedOverview = {
-        totalRevenue: orderStats?.totalRevenue || billingStats?.totalRevenue || mockOverviewStats.totalRevenue,
-        totalOrders: orderStats?.totalOrders || mockOverviewStats.totalOrders,
-        averageOrderValue: orderStats?.averageOrderValue || mockOverviewStats.averageOrderValue,
-        growthRate: orderStats?.revenueGrowth || mockOverviewStats.growthRate,
-        totalCustomers: customerStats?.totalCustomers || mockOverviewStats.totalCustomers,
+      const stats = {
+        totalRevenue: salesResp?.totalRevenue ?? mockOverviewStats.totalRevenue,
+        totalOrders: salesResp?.totalOrders ?? mockOverviewStats.totalOrders,
+        averageOrderValue: salesResp?.averageOrderValue ?? mockOverviewStats.averageOrderValue,
+        growthRate: salesResp?.revenueGrowth ?? mockOverviewStats.growthRate,
+        totalCustomers: salesResp?.totalCustomers ?? mockOverviewStats.totalCustomers,
       };
 
-      const derivedSales = (orderStats?.ordersByDay || []).map((d) => ({
-        date: d.date,
-        revenue: d.revenue || d.totalAmount,
-        orders: d.count || d.orders,
+      const products = (productsResp || mockTopProducts).map((p, i) => ({
+        id: p.id ?? i + 1,
+        name: p.name ?? p.productName ?? `Product ${i + 1}`,
+        category: p.category ?? 'General',
+        sales: p.sales ?? p.orderCount ?? 0,
+        revenue: p.revenue ?? 0,
+        stock: p.stock ?? 100,
+        image: p.image ?? 'https://via.placeholder.com/50',
       }));
 
-      const derivedTopProducts = (orderStats?.topProducts || []).map((p, idx) => ({
-        id: p.id || idx + 1,
-        name: p.name,
-        category: p.category || 'General',
-        sales: p.orderCount || p.sales || 0,
-        revenue: p.revenue || 0,
-        stock: p.stock || Math.floor(Math.random() * 150),
-        image: p.image || 'https://via.placeholder.com/50',
+      const categories = (categoriesResp || mockTopCategories).map((c, i) => ({
+        id: c.id ?? i + 1,
+        name: c.name ?? c.categoryName ?? `Category ${i + 1}`,
+        sales: c.sales ?? c.orderCount ?? 0,
+        revenue: c.revenue ?? 0,
       }));
 
-      // Fallbacks if backend doesn't provide category breakdowns
-      const derivedTopCategories = mockTopCategories;
-      const derivedRevenueByCategory = mockRevenueByCategory;
-
-      setOverviewStats(derivedOverview);
-      setSalesData(derivedSales.length > 0 ? derivedSales : mockSalesChartData);
-      setTopProducts(derivedTopProducts.length > 0 ? derivedTopProducts : mockTopProducts);
-      setTopCategories(derivedTopCategories);
-      setRevenueByCategory(derivedRevenueByCategory);
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
-      // Keep mock data on error
+      setOverviewStats(stats);
+      setTopProducts(products);
+      setTopCategories(categories);
+    } catch (e) {
+      console.warn('[Analytics] fetch failed, using mock data', e);
       setOverviewStats(mockOverviewStats);
-      setSalesData(mockSalesChartData);
       setTopProducts(mockTopProducts);
       setTopCategories(mockTopCategories);
-      setRevenueByCategory(mockRevenueByCategory);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExportCSV = () => {
-    const exportData = topProducts.map(product => ({
-      'Product Name': product.name,
-      'Category': product.category,
-      'Sales': product.sales,
-      'Revenue': formatCurrency(product.revenue),
-      'Stock': product.stock,
-    }));
-    
-    exportToCSV(exportData, 'top_products_report');
-  };
-
-  const handleExportPDF = () => {
-    const columns = [
-      { key: 'name', label: 'Product Name' },
-      { key: 'category', label: 'Category' },
-      { key: 'sales', label: 'Sales' },
-      { key: 'revenue', label: 'Revenue', format: 'currency' },
-      { key: 'stock', label: 'Stock' },
-    ];
-
-    exportToPDF(topProducts, 'top_products_report', {
-      title: 'Top Selling Products Report',
-      columns,
-      orientation: 'landscape',
-    });
-  };
-
   const handleExportSalesReport = () => {
-    const reportData = {
-      totalRevenue: overviewStats?.totalRevenue,
-      totalOrders: overviewStats?.totalOrders,
-      avgOrderValue: overviewStats?.averageOrderValue,
-      growthRate: overviewStats?.growthRate,
-      topProducts: topProducts.slice(0, 5),
-    };
+    try {
+      if (!overviewStats) {
+        error('No data to export');
+        return;
+      }
+      const reportData = {
+        totalRevenue: overviewStats.totalRevenue,
+        totalOrders: overviewStats.totalOrders,
+        avgOrderValue: overviewStats.averageOrderValue,
+        growthRate: overviewStats.growthRate,
+        topProducts: topProducts.slice(0, 5).map((p) => ({
+          name: p.name,
+          category: p.category,
+          sales: p.sales,
+          revenue: p.revenue,
+        })),
+      };
+      const ok = exportSalesReportPDF(reportData, selectedPeriod);
+      if (!ok) throw new Error('PDF generation failed');
+      success('Sales report exported');
+    } catch (e) {
+      console.error('Export sales report error:', e);
+      error(`Failed to export: ${e.message}`);
+    }
+  };
 
-    exportSalesReportPDF(reportData, selectedPeriod);
+  const handleExportProductsCSV = () => {
+    try {
+      const data = topProducts.map((p) => ({
+        name: p.name,
+        category: p.category,
+        sales: p.sales,
+        revenue: p.revenue,
+        stock: p.stock,
+      }));
+      exportToCSV(data, 'top_products');
+      success('Products CSV exported');
+    } catch (e) {
+      error('CSV export failed');
+    }
+  };
+
+  const handleExportProductsPDF = () => {
+    try {
+      exportToPDF(topProducts, 'top_products', {
+        title: 'Top Products',
+        columns: [
+          { key: 'name', label: 'Name' },
+          { key: 'category', label: 'Category' },
+          { key: 'sales', label: 'Sales', format: 'number' },
+          { key: 'revenue', label: 'Revenue', format: 'currency' },
+          { key: 'stock', label: 'Stock', format: 'number' },
+        ],
+        orientation: 'landscape',
+      });
+      success('Products PDF exported');
+    } catch {
+      error('PDF export failed');
+    }
   };
 
   const productColumns = [
@@ -162,6 +153,9 @@ const Analytics = () => {
             src={row.image}
             alt={value}
             className="w-10 h-10 rounded object-cover"
+            onError={(e) => {
+              e.currentTarget.src = 'https://via.placeholder.com/50';
+            }}
           />
           <span className="font-medium">{value}</span>
         </div>
@@ -171,31 +165,23 @@ const Analytics = () => {
     {
       key: 'sales',
       label: 'Sales',
-      render: (value) => <span className="font-semibold">{value}</span>,
+      render: (v) => <span className="font-semibold">{formatNumber(v)}</span>,
     },
     {
       key: 'revenue',
       label: 'Revenue',
-      render: (value) => (
-        <span className="text-success font-semibold">
-          {formatCurrency(value)}
-        </span>
-      ),
+      render: (v) => <span className="text-green-600 font-semibold">{formatCurrency(v)}</span>,
     },
     {
       key: 'stock',
       label: 'Stock',
-      render: (value) => (
+      render: (v) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            value < 50
-              ? 'bg-red-100 text-red-800'
-              : value < 100
-              ? 'bg-yellow-100 text-yellow-800'
-              : 'bg-green-100 text-green-800'
+          className={`px-2 py-1 rounded-full text-xs ${
+            v < 50 ? 'bg-red-100 text-red-700' : v < 100 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
           }`}
         >
-          {value}
+          {v}
         </span>
       ),
     },
@@ -205,45 +191,24 @@ const Analytics = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics & Reports</h1>
-          <p className="text-gray-600 mt-1">
-            Track your platform performance and insights
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
+          <p className="text-gray-600 mt-1">Performance overview and reports</p>
         </div>
-
         <div className="flex items-center space-x-3">
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slt-primary"
-          >
-            {TIME_PERIODS.map((period) => (
-              <option key={period.value} value={period.value}>
-                {period.label}
+          <select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="input">
+            {PERIOD_OPTIONS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
               </option>
             ))}
           </select>
-
-          <Button
-            variant="outline"
-            icon={<Download size={18} />}
-            onClick={handleExportSalesReport}
-          >
+          <Button variant="outline" icon={<Download size={18} />} onClick={handleExportSalesReport} disabled={loading}>
             Export Report
           </Button>
         </div>
       </div>
 
-      <LoadingState
-        loading={loading}
-        skeleton={
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        }
-      >
+      <LoadingState loading={loading}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             title="Total Revenue"
@@ -258,7 +223,7 @@ const Analytics = () => {
             value={formatNumber(overviewStats?.totalOrders)}
             icon={<ShoppingCart size={24} />}
             trend="up"
-            trendValue="+8.2%"
+            trendValue="+8%"
             color="secondary"
           />
           <StatsCard
@@ -266,7 +231,7 @@ const Analytics = () => {
             value={formatCurrency(overviewStats?.averageOrderValue)}
             icon={<TrendingUp size={24} />}
             trend="up"
-            trendValue="+3.5%"
+            trendValue="+3%"
             color="success"
           />
           <StatsCard
@@ -274,153 +239,40 @@ const Analytics = () => {
             value={formatNumber(overviewStats?.totalCustomers)}
             icon={<Users size={24} />}
             trend="up"
-            trendValue="+12.4%"
+            trendValue="+12%"
             color="info"
           />
         </div>
       </LoadingState>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card
-          title="Sales Trend"
-          subtitle="Revenue and orders over time"
-          className="lg:col-span-2"
-        >
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={salesData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 12 }}
-                stroke="#6B7280"
-              />
-              <YAxis tick={{ fontSize: 12 }} stroke="#6B7280" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#FFF',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="revenue"
-                stroke={CHART_COLORS.primary}
-                strokeWidth={3}
-                dot={{ fill: CHART_COLORS.primary, r: 4 }}
-                name="Revenue (LKR)"
-              />
-              <Line
-                type="monotone"
-                dataKey="orders"
-                stroke={CHART_COLORS.secondary}
-                strokeWidth={3}
-                dot={{ fill: CHART_COLORS.secondary, r: 4 }}
-                name="Orders"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card title="Revenue by Category" subtitle="Category distribution">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={revenueByCategory}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
-                }
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {revenueByCategory.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={Object.values(CHART_COLORS)[index % 6]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value) => formatCurrency(value)}
-                contentStyle={{
-                  backgroundColor: '#FFF',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      <Card
-        title="Top Selling Categories"
-        subtitle="Best performing categories"
-      >
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={topCategories}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#6B7280" />
-            <YAxis tick={{ fontSize: 12 }} stroke="#6B7280" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#FFF',
-                border: '1px solid #E5E7EB',
-                borderRadius: '8px',
-              }}
-            />
-            <Legend />
-            <Bar
-              dataKey="sales"
-              fill={CHART_COLORS.primary}
-              radius={[8, 8, 0, 0]}
-              name="Sales"
-            />
-            <Bar
-              dataKey="revenue"
-              fill={CHART_COLORS.secondary}
-              radius={[8, 8, 0, 0]}
-              name="Revenue (LKR)"
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
-
       <Card
         title="Top Selling Products"
-        subtitle="Best performing products in selected period"
+        subtitle="Best performers in selected period"
         headerAction={
           <div className="flex space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<Download size={16} />}
-              onClick={handleExportCSV}
-            >
+            <Button variant="ghost" size="sm" icon={<Download size={16} />} onClick={handleExportProductsCSV}>
               CSV
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<Download size={16} />}
-              onClick={handleExportPDF}
-            >
+            <Button variant="ghost" size="sm" icon={<Download size={16} />} onClick={handleExportProductsPDF}>
               PDF
             </Button>
           </div>
         }
       >
+        <DataTable data={topProducts} columns={productColumns} pagination pageSize={10} searchable emptyMessage="No product data" />
+      </Card>
+
+      <Card title="Top Categories" subtitle="Category performance">
         <DataTable
-          data={topProducts}
-          columns={productColumns}
-          pagination={true}
+          data={topCategories}
+          columns={[
+            { key: 'name', label: 'Category' },
+            { key: 'sales', label: 'Sales', render: (v) => formatNumber(v) },
+            { key: 'revenue', label: 'Revenue', render: (v) => formatCurrency(v) },
+          ]}
+          pagination
           pageSize={10}
-          searchable={true}
+          emptyMessage="No category data"
         />
       </Card>
     </div>

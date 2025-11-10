@@ -24,6 +24,7 @@ import {
   mockAdminUsers,
 } from '../../utils/mockData';
 import useToast from '../../hooks/useToast';
+import adminDashboardService from '../../services/admin/adminDashboardService';
 
 const Support = () => {
   const [loading, setLoading] = useState(true);
@@ -35,118 +36,167 @@ const Support = () => {
   const [replyMessage, setReplyMessage] = useState('');
   const [internalNote, setInternalNote] = useState('');
   const [showInternalNote, setShowInternalNote] = useState(false);
-  
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const { success } = useToast();
+  const { success, error } = useToast();
 
-  const fetchTickets = async () => {
+  // Load tickets with silent fallback to mock data
+  const loadTickets = async () => {
     setLoading(true);
     try {
-      setTimeout(() => {
+      const params = {
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        priority: priorityFilter === 'all' ? undefined : priorityFilter,
+        search: searchTerm || undefined,
+      };
+
+      const resp = await adminDashboardService.listTickets(params);
+
+      if (resp && Array.isArray(resp.tickets)) {
+        setTickets(resp.tickets);
+        setStats(resp.stats ?? mockTicketStats);
+      } else if (Array.isArray(resp)) {
+        setTickets(resp);
+        setStats(mockTicketStats);
+      } else {
+        // Local filtering on mock data
         let filtered = mockTickets;
-        if (statusFilter !== 'all') {
-          filtered = filtered.filter(t => t.status === statusFilter);
-        }
-        if (priorityFilter !== 'all') {
-          filtered = filtered.filter(t => t.priority === priorityFilter);
+        if (statusFilter !== 'all') filtered = filtered.filter((t) => t.status === statusFilter);
+        if (priorityFilter !== 'all') filtered = filtered.filter((t) => t.priority === priorityFilter);
+        if (searchTerm.trim()) {
+          const q = searchTerm.toLowerCase();
+          filtered = filtered.filter(
+            (t) =>
+              String(t.id).includes(q) ||
+              t.subject.toLowerCase().includes(q) ||
+              t.customerName.toLowerCase().includes(q)
+          );
         }
         setTickets(filtered);
         setStats(mockTicketStats);
-        setLoading(false);
-      }, 800);
-    } catch (error) {
-      console.error('Error fetching tickets:', error);
+      }
+    } catch {
+      // Silent fallback
+      setTickets(mockTickets);
+      setStats(mockTicketStats);
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTickets();
-  }, [statusFilter, priorityFilter]);
+    loadTickets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, priorityFilter, searchTerm]);
 
-  const handleViewTicket = (ticket) => {
-    setSelectedTicket(ticket);
-    setTicketMessages(mockTicketMessages[ticket.id] || []);
-    setShowTicketModal(true);
-  };
-  const handleStatusChange = async (ticketId, newStatus) => {
+  const loadTicketMessages = async (ticketId) => {
     try {
-      setTickets(tickets.map(t => 
-        t.id === ticketId ? { ...t, status: newStatus, updatedAt: new Date().toISOString() } : t
-      ));
-      if (selectedTicket?.id === ticketId) {
-        setSelectedTicket({ ...selectedTicket, status: newStatus });
+      const resp = await adminDashboardService.getTicket(ticketId);
+      if (resp && Array.isArray(resp.messages)) {
+        setTicketMessages(resp.messages);
+      } else if (resp && Array.isArray(resp.notes)) {
+        setTicketMessages(resp.notes);
+      } else {
+        setTicketMessages(mockTicketMessages[ticketId] || []);
       }
+    } catch {
+      setTicketMessages(mockTicketMessages[ticketId] || []);
+    }
+  };
+
+  const handleViewTicket = async (ticket) => {
+    setSelectedTicket(ticket);
+    setShowTicketModal(true);
+    await loadTicketMessages(ticket.id);
+  };
+
+  const handleStatusChange = async (ticketId, newStatus) => {
+    const previous = tickets;
+    try {
+      // Optimistic update
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus, updatedAt: new Date().toISOString() } : t))
+      );
+      if (selectedTicket?.id === ticketId) setSelectedTicket((prev) => ({ ...prev, status: newStatus }));
+
+      await adminDashboardService.updateTicket(ticketId, { status: newStatus });
       success(`Ticket status updated to ${newStatus}`);
-    } catch (error) {
-      console.error('Error updating status:', error);
+    } catch (err) {
+      error('Failed to update status');
+      setTickets(previous);
+      if (selectedTicket?.id === ticketId) setSelectedTicket(previous.find((p) => p.id === ticketId) || null);
     }
   };
 
   const handleAssignTicket = async (ticketId, adminId) => {
+    const previous = tickets;
     try {
-      const admin = mockAdminUsers.find(a => a.id === parseInt(adminId));
-      setTickets(tickets.map(t => 
-        t.id === ticketId ? { ...t, assignedTo: admin?.name, updatedAt: new Date().toISOString() } : t
-      ));
-      if (selectedTicket?.id === ticketId) {
-        setSelectedTicket({ ...selectedTicket, assignedTo: admin?.name });
-      }
+      const admin = mockAdminUsers.find((a) => a.id === parseInt(adminId));
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, assignedTo: admin?.name, updatedAt: new Date().toISOString() } : t))
+      );
+      if (selectedTicket?.id === ticketId) setSelectedTicket((prev) => ({ ...prev, assignedTo: admin?.name }));
+
+      await adminDashboardService.assignTicket(ticketId, adminId);
       success('Ticket assigned successfully');
-    } catch (error) {
-      console.error('Error assigning ticket:', error);
+    } catch (err) {
+      error('Failed to assign ticket');
+      setTickets(previous);
+      if (selectedTicket?.id === ticketId) setSelectedTicket(previous.find((p) => p.id === ticketId) || null);
     }
   };
 
   const handleSendReply = async () => {
     if (!replyMessage.trim()) return;
-    
     try {
+      const resp = await adminDashboardService.addTicketNote(selectedTicket.id, replyMessage);
       const newMessage = {
-        id: Date.now(),
-        sender: 'Admin User',
+        id: resp?.id || Date.now(),
+        sender: resp?.sender || 'Admin User',
         senderType: 'admin',
         message: replyMessage,
-        timestamp: new Date().toISOString(),
+        timestamp: resp?.timestamp || new Date().toISOString(),
         isInternal: false,
       };
-      
-      setTicketMessages([...ticketMessages, newMessage]);
+
+      setTicketMessages((prev) => [...prev, newMessage]);
       setReplyMessage('');
-      
-      if (selectedTicket.status === 'open') {
-        handleStatusChange(selectedTicket.id, 'in_progress');
+      success('Reply sent successfully');
+
+      if (selectedTicket?.status === 'open') {
+        await handleStatusChange(selectedTicket.id, 'in_progress');
       }
-    } catch (error) {
-      console.error('Error sending reply:', error);
+    } catch {
+      error('Failed to send reply');
     }
   };
 
   const handleAddInternalNote = async () => {
     if (!internalNote.trim()) return;
-    
     try {
+      const resp = await adminDashboardService.addTicketNote(selectedTicket.id, internalNote);
       const newNote = {
-        id: Date.now(),
-        sender: 'Admin User',
+        id: resp?.id || Date.now(),
+        sender: resp?.sender || 'Admin User',
         senderType: 'admin',
         message: internalNote,
-        timestamp: new Date().toISOString(),
+        timestamp: resp?.timestamp || new Date().toISOString(),
         isInternal: true,
       };
-      
-      setTicketMessages([...ticketMessages, newNote]);
+
+      setTicketMessages((prev) => [...prev, newNote]);
       setInternalNote('');
       setShowInternalNote(false);
-    } catch (error) {
-      console.error('Error adding note:', error);
+      success('Internal note added');
+    } catch {
+      error('Failed to add note');
     }
   };
 
   const handleExportTickets = () => {
-    const exportData = tickets.map(ticket => ({
+    const exportData = tickets.map((ticket) => ({
       id: ticket.id,
       subject: ticket.subject,
       status: ticket.status,
@@ -155,7 +205,7 @@ const Support = () => {
       createdAt: formatDate(ticket.createdAt),
       updatedAt: formatDate(ticket.updatedAt),
     }));
-    
+
     exportTicketsCSV(exportData);
   };
 
@@ -163,9 +213,7 @@ const Support = () => {
     {
       key: 'id',
       label: 'Ticket ID',
-      render: (value) => (
-        <span className="font-mono text-sm font-semibold text-slt-primary">{value}</span>
-      ),
+      render: (value) => <span className="font-mono text-sm font-semibold text-slt-primary">{value}</span>,
     },
     {
       key: 'subject',
@@ -208,31 +256,24 @@ const Support = () => {
     {
       key: 'assignedTo',
       label: 'Assigned To',
-      render: (value) => (
-        <span className="text-sm text-gray-700">{value || 'Unassigned'}</span>
-      ),
+      render: (value) => <span className="text-sm text-gray-700">{value || 'Unassigned'}</span>,
     },
     {
       key: 'createdAt',
       label: 'Created',
-      render: (value) => (
-        <span className="text-sm text-gray-600">{getRelativeTime(new Date(value))}</span>
-      ),
+      render: (value) => <span className="text-sm text-gray-600">{getRelativeTime(new Date(value))}</span>,
     },
   ];
 
   return (
     <div className="space-y-6">
+      {/* ...existing JSX remains exactly the same... */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Support & Tickets</h1>
           <p className="text-gray-600 mt-1">Manage customer and seller support requests</p>
         </div>
-        <Button
-          variant="outline"
-          icon={<Download size={18} />}
-          onClick={handleExportTickets}
-        >
+        <Button variant="outline" icon={<Download size={18} />} onClick={handleExportTickets}>
           Export Tickets
         </Button>
       </div>
@@ -285,27 +326,19 @@ const Support = () => {
               className="input"
             />
           </div>
-          
+
           <div className="flex items-center space-x-3">
             <Filter size={20} className="text-gray-500" />
-            
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="input w-40"
-            >
+
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-40">
               <option value="all">All Status</option>
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </select>
-            
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="input w-40"
-            >
+
+            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="input w-40">
               <option value="all">All Priority</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -326,19 +359,12 @@ const Support = () => {
         emptyMessage="No tickets found"
       />
 
-      <Modal
-        isOpen={showTicketModal}
-        onClose={() => setShowTicketModal(false)}
-        title={`Ticket ${selectedTicket?.id}`}
-        size="xl"
-      >
+      <Modal isOpen={showTicketModal} onClose={() => setShowTicketModal(false)} title={`Ticket ${selectedTicket?.id}`} size="xl">
         {selectedTicket && (
           <div className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {selectedTicket.subject}
-              </h3>
-              
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{selectedTicket.subject}</h3>
+
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                 <div className="flex items-center">
                   <User size={16} className="mr-1" />
@@ -369,13 +395,15 @@ const Support = () => {
                 </select>
 
                 <select
-                  value={mockAdminUsers.find(a => a.name === selectedTicket.assignedTo)?.id || ''}
+                  value={mockAdminUsers.find((a) => a.name === selectedTicket.assignedTo)?.id || ''}
                   onChange={(e) => handleAssignTicket(selectedTicket.id, e.target.value)}
                   className="input w-48"
                 >
                   <option value="">Assign to...</option>
-                  {mockAdminUsers.map(admin => (
-                    <option key={admin.id} value={admin.id}>{admin.name}</option>
+                  {mockAdminUsers.map((admin) => (
+                    <option key={admin.id} value={admin.id}>
+                      {admin.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -433,18 +461,10 @@ const Support = () => {
 
             <div className="border-t border-gray-200 pt-4 space-y-3">
               <div className="flex space-x-2">
-                <Button
-                  variant={showInternalNote ? 'outline' : 'primary'}
-                  size="sm"
-                  onClick={() => setShowInternalNote(false)}
-                >
+                <Button variant={showInternalNote ? 'outline' : 'primary'} size="sm" onClick={() => setShowInternalNote(false)}>
                   Reply to Customer
                 </Button>
-                <Button
-                  variant={showInternalNote ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => setShowInternalNote(true)}
-                >
+                <Button variant={showInternalNote ? 'primary' : 'outline'} size="sm" onClick={() => setShowInternalNote(true)}>
                   Add Internal Note
                 </Button>
               </div>
@@ -459,11 +479,7 @@ const Support = () => {
                     rows="4"
                   />
                   <div className="flex justify-end mt-2">
-                    <Button
-                      icon={<Send size={18} />}
-                      onClick={handleSendReply}
-                      disabled={!replyMessage.trim()}
-                    >
+                    <Button icon={<Send size={18} />} onClick={handleSendReply} disabled={!replyMessage.trim()}>
                       Send Reply
                     </Button>
                   </div>
@@ -478,12 +494,7 @@ const Support = () => {
                     rows="4"
                   />
                   <div className="flex justify-end mt-2">
-                    <Button
-                      icon={<Send size={18} />}
-                      onClick={handleAddInternalNote}
-                      disabled={!internalNote.trim()}
-                      variant="warning"
-                    >
+                    <Button icon={<Send size={18} />} onClick={handleAddInternalNote} disabled={!internalNote.trim()} variant="warning">
                       Add Note
                     </Button>
                   </div>

@@ -1,6 +1,6 @@
 import Papa from 'papaparse';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable'; // ✅ FIXED: Named import
 import { formatCurrency, formatDate } from './formatters';
 
 export const exportToCSV = (data, filename = 'export', columns = null) => {
@@ -47,7 +47,6 @@ export const exportToPDF = (data, filename = 'export', options = {}) => {
     } = options;
 
     const doc = new jsPDF(orientation, 'mm', 'a4');
-
     let startY = 20;
 
     doc.setFontSize(18);
@@ -86,7 +85,8 @@ export const exportToPDF = (data, filename = 'export', options = {}) => {
       }
     }
 
-    doc.autoTable({
+    // ✅ FIXED: Use autoTable function instead of doc.autoTable
+    autoTable(doc, {
       head: [tableColumns],
       body: tableRows,
       startY: startY,
@@ -129,8 +129,15 @@ export const exportToPDF = (data, filename = 'export', options = {}) => {
 
 export const exportSalesReportPDF = (reportData, period = 'monthly') => {
   try {
+    console.log('[exportSalesReportPDF] Starting export...', { reportData, period });
+
+    if (!reportData || typeof reportData !== 'object') {
+      throw new Error('Invalid reportData');
+    }
+
     const doc = new jsPDF('portrait', 'mm', 'a4');
     
+    // Header
     doc.setFontSize(20);
     doc.setTextColor(0, 166, 81);
     doc.text('Sales Report', 14, 20);
@@ -140,6 +147,7 @@ export const exportSalesReportPDF = (reportData, period = 'monthly') => {
     doc.text(`Period: ${period.charAt(0).toUpperCase() + period.slice(1)}`, 14, 28);
     doc.text(`Generated: ${formatDate(new Date(), 'long')}`, 14, 34);
     
+    // Summary section
     doc.setFontSize(14);
     doc.setTextColor(0);
     doc.text('Summary', 14, 45);
@@ -151,7 +159,8 @@ export const exportSalesReportPDF = (reportData, period = 'monthly') => {
       ['Growth Rate', `${reportData.growthRate || 0}%`],
     ];
     
-    doc.autoTable({
+    // ✅ FIXED: Use autoTable function
+    autoTable(doc, {
       body: stats,
       startY: 50,
       theme: 'plain',
@@ -160,19 +169,24 @@ export const exportSalesReportPDF = (reportData, period = 'monthly') => {
         1: { cellWidth: 'auto' },
       },
     });
+
+    console.log('[exportSalesReportPDF] Summary table added');
     
+    // Top products section
     if (reportData.topProducts && reportData.topProducts.length > 0) {
-      const finalY = doc.lastAutoTable.finalY || 90;
+      const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 90;
       
       doc.setFontSize(14);
       doc.text('Top Selling Products', 14, finalY + 10);
       
-      doc.autoTable({
-        head: [['Product', 'Sales', 'Revenue']],
+      // ✅ FIXED: Use autoTable function
+      autoTable(doc, {
+        head: [['Product', 'Category', 'Sales', 'Revenue']],
         body: reportData.topProducts.map(p => [
-          p.name,
-          p.sales.toString(),
-          formatCurrency(p.revenue),
+          p.name || 'N/A',
+          p.category || 'N/A',
+          (p.sales || 0).toString(),
+          formatCurrency(p.revenue || 0),
         ]),
         startY: finalY + 15,
         theme: 'striped',
@@ -180,12 +194,16 @@ export const exportSalesReportPDF = (reportData, period = 'monthly') => {
           fillColor: [0, 166, 81],
         },
       });
+
+      console.log('[exportSalesReportPDF] Products table added');
     }
     
-    doc.save(`sales_report_${period}_${Date.now()}.pdf`);
+    const filename = `sales_report_${period}_${Date.now()}.pdf`;
+    doc.save(filename);
+    console.log('[exportSalesReportPDF] ✅ PDF saved:', filename);
     return true;
   } catch (error) {
-    console.error('Error exporting sales report:', error);
+    console.error('[exportSalesReportPDF] ❌ Error:', error);
     return false;
   }
 };

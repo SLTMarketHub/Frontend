@@ -8,6 +8,7 @@ import tmf633AdminService from './tmf633AdminService';
 import tmf668AdminService from './tmf668AdminService';
 import tmf678AdminService from './tmf678AdminService';
 import tmf681AdminService from './tmf681AdminService';
+import adminDashboardService from './adminDashboardService';
 
 // Re-export individual services for named imports
 export {
@@ -17,7 +18,8 @@ export {
   tmf633AdminService,
   tmf668AdminService,
   tmf678AdminService,
-  tmf681AdminService
+  tmf681AdminService,
+   adminDashboardService
 };
 
 // Export all admin services as a single object for convenience
@@ -28,7 +30,8 @@ const adminServices = {
   serviceCatalog: tmf633AdminService,
   partnership: tmf668AdminService,
   customerBill: tmf678AdminService,
-  communication: tmf681AdminService
+  communication: tmf681AdminService,
+  dashboard: adminDashboardService
 };
 
 export default adminServices;
