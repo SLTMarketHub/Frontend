@@ -74,6 +74,21 @@ const Users = () => {
         userManagementService.getUserStatistics()
       ]);
 
+      console.log('Fetched users:', allUsers.length, 'users');
+      if (allUsers.length > 0) {
+        console.log('Sample user:', allUsers[0]);
+      }
+
+      console.log('Statistics received from service:', statistics);
+      console.log('Stats being set:', {
+        totalUsers: statistics.totalUsers,
+        activeCustomers: statistics.activeCustomers,
+        activeSellers: statistics.activeSellers,
+        pendingApprovals: statistics.pendingSellers,
+        newThisMonth: statistics.newUsersThisMonth,
+        growthRate: statistics.overallGrowthRate
+      });
+
       setUsers(allUsers);
       setStats({
         totalUsers: statistics.totalUsers,
@@ -111,26 +126,41 @@ const Users = () => {
 
   const confirmSuspend = async () => {
     try {
+      if (!selectedUser || (!selectedUser.id && !selectedUser._id)) {
+        console.error('Invalid user selected:', selectedUser);
+        error('Invalid user selected');
+        return;
+      }
+
       const newStatus = selectedUser.status === 'suspended' ? 'active' : 'suspended';
       const reason = `Admin action: ${newStatus === 'suspended' ? 'Account suspended' : 'Account reactivated'}`;
-      
-      // Use the new userManagementService
+
+      console.log('Suspending user:', {
+        id: selectedUser.id,
+        _id: selectedUser._id,
+        role: selectedUser.role,
+        newStatus
+      });
+
+      const userId = selectedUser._id || selectedUser.id;
       await userManagementService.updateUserStatus(
-        selectedUser.id,
+        userId,
         selectedUser.role,
         newStatus,
         reason
       );
 
-      setUsers(users.map(u => 
-        u.id === selectedUser.id ? { ...u, status: newStatus } : u
+      setUsers(users.map(u =>
+        (u.id === selectedUser.id || u._id === selectedUser._id) ? { ...u, status: newStatus } : u
       ));
-      
+
       success(`User ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`);
       setShowSuspendConfirm(false);
+      setSelectedUser(null);
     } catch (err) {
       console.error('Error updating user status:', err);
-      error('Failed to update user status');
+      console.error('Error details:', err.response?.data);
+      error(err.response?.data?.error || 'Failed to update user status');
     }
   };
 
@@ -203,9 +233,10 @@ const Users = () => {
     {
       key: 'orders',
       label: 'Orders/Sales',
-      render: (value, row) => (
-        <span className="font-semibold text-gray-900">{value}</span>
-      ),
+      render: (value, row) => {
+        const displayValue = row.role === 'seller' ? (row.products || 0) : (value || 0);
+        return <span className="font-semibold text-gray-900">{displayValue}</span>;
+      },
     },
     {
       key: 'spent',
