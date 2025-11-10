@@ -150,9 +150,15 @@ const Users = () => {
         reason
       );
 
+      // Update local state immediately
       setUsers(users.map(u =>
         (u.id === selectedUser.id || u._id === selectedUser._id) ? { ...u, status: newStatus } : u
       ));
+
+      // Refresh the entire user list to ensure consistency with backend
+      setTimeout(() => {
+        fetchUsers();
+      }, 1000);
 
       success(`User ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`);
       setShowSuspendConfirm(false);

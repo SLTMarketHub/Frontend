@@ -6,7 +6,7 @@ import DataTable from '../components/common/DataTable';
 import Modal from '../components/common/Modal';
 import { formatDate, getStatusColor, formatCurrency, formatNumber } from '../utils/formatters';
 import useToast from '../hooks/useToast';
-import { tmf668AdminService, tmf681AdminService } from '../services/admin';
+import { tmf668AdminService, tmf681AdminService, userManagementService } from '../services/admin';
 
 const dummySellers = [
   { id: 1, name: "John Doe", email: "john@example.com", status: "pending", storeName: "John's Electronics", phone: "+94771234567", appliedAt: "2025-03-10", revenue: 0, totalOrders: 0, rating: 0, productsListed: 0 },
@@ -67,14 +67,13 @@ export default function SellerApproval() {
     try {
       const seller = sellers.find(s => s.id === id);
       
-      await tmf668AdminService.updatePartnership(id, {
-        status: 'active',
-        note: [{
-          text: 'Seller application approved by admin',
-          date: new Date().toISOString(),
-          author: 'Admin'
-        }]
-      });
+      // Use the userManagementService for consistent status updates
+      await userManagementService.updateUserStatus(
+        id,
+        'seller',
+        'active',
+        'Seller application approved by admin'
+      );
       
       // Send approval notification
       if (seller) {
@@ -103,6 +102,12 @@ export default function SellerApproval() {
           seller.id === id ? { ...seller, status: 'active' } : seller
         )
       );
+      
+      // Refresh the seller list to ensure consistency
+      setTimeout(() => {
+        fetchSellers();
+      }, 1000);
+      
       success('Seller approved successfully!');
     } catch (err) {
       console.error('Error approving seller:', err);
@@ -114,14 +119,13 @@ export default function SellerApproval() {
     try {
       const seller = sellers.find(s => s.id === id);
       
-      await tmf668AdminService.updatePartnership(id, {
-        status: 'rejected',
-        note: [{
-          text: 'Seller application rejected by admin',
-          date: new Date().toISOString(),
-          author: 'Admin'
-        }]
-      });
+      // Use the userManagementService for consistent status updates
+      await userManagementService.updateUserStatus(
+        id,
+        'seller',
+        'rejected',
+        'Seller application rejected by admin'
+      );
       
       // Send rejection notification
       if (seller) {
@@ -150,6 +154,12 @@ export default function SellerApproval() {
           seller.id === id ? { ...seller, status: 'rejected' } : seller
         )
       );
+      
+      // Refresh the seller list to ensure consistency
+      setTimeout(() => {
+        fetchSellers();
+      }, 1000);
+      
       success('Seller rejected successfully!');
     } catch (err) {
       console.error('Error rejecting seller:', err);
