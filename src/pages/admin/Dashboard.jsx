@@ -383,6 +383,7 @@ const Dashboard = () => {
       </div>
 
       {/* Category Performance and Top Products */}
+      {/* COMMENTED OUT: These features require Product Catalog and Analytics APIs that are not currently available
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card
           title="Revenue by Category"
@@ -487,8 +488,10 @@ const Dashboard = () => {
           </div>
         </Card>
       </div>
+      END COMMENTED SECTION */}
 
       {/* System Alerts & Notifications */}
+      {/* COMMENTED OUT: System Alerts require notification/alert APIs that are not currently available
       <Card
         title="System Alerts"
         subtitle="Important notifications and warnings"
@@ -550,6 +553,7 @@ const Dashboard = () => {
           ))}
         </div>
       </Card>
+      END COMMENTED SECTION */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Orders */}
