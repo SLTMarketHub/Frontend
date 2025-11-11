@@ -11,8 +11,8 @@ export default function CategoryCard({ id, categoryName }) {
     const PRICE_ENDPOINT = import.meta.env.VITE_ENDPOINT_TMF620_PRICE;
 
     useEffect(() => {
-        console.log(id)
-        console.log(CATEGORY_ENDPOINT)
+        // console.log(id)
+        // console.log(CATEGORY_ENDPOINT)
         const fetchProducts = async () => {
             setLoading(true);
             try {

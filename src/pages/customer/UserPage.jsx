@@ -17,7 +17,6 @@ const UserPage = () => {
   const [passwordMatch, setPasswordMatch] = useState(true);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Schema-based Edit Form state
   const [editForm, setEditForm] = useState({
     name: "",
     emailAddress: "",
@@ -36,7 +35,7 @@ const UserPage = () => {
     if (storedUser) setUserDetails(JSON.parse(storedUser));
   }, []);
 
-  // ✅ Fetch customer data by engagedParty ID
+  // ✅ Fetch customer data
   useEffect(() => {
     if (!userDetails) return;
 
@@ -52,7 +51,6 @@ const UserPage = () => {
         const data = await response.json();
         setUserData(data);
 
-        // Pre-fill edit form using Customer schema
         setEditForm({
           name: data.name || "",
           emailAddress: data?.contactMedium?.[0]?.emailAddress || "",
@@ -76,7 +74,7 @@ const UserPage = () => {
     fetchData();
   }, [userDetails]);
 
-  // ✅ Fetch orders by user (customer) ID
+  // ✅ Fetch orders by user ID
   useEffect(() => {
     if (!userDetails?.id) return;
 
@@ -113,7 +111,7 @@ const UserPage = () => {
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ Submit profile changes (PATCH)
+  // ✅ Submit profile changes
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     try {
@@ -228,32 +226,57 @@ const UserPage = () => {
               <h2 className="text-xl font-semibold text-gray-800 mb-4">
                 Recent Orders
               </h2>
-              <ul className="space-y-3">
-                {orders.length === 0 ? (
-                  <p className="text-gray-600">No orders found.</p>
-                ) : (
-                  orders.slice(0, 5).map((order) => (
-                    <li key={order.id} className="border rounded-lg p-3 bg-white">
-                      <p className="font-medium">Order #{order.id}</p>
-                      <p className="text-sm text-gray-600">
+
+              {orders.length === 0 ? (
+                <p className="text-gray-600">No orders found.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {orders.slice(0, 5).map((order) => (
+                    <li
+                      key={order.id}
+                      className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition"
+                    >
+                      <div className="flex justify-between items-center">
+                        <p className="font-medium text-gray-800">
+                          Order #{order.id?.slice(0, 8) || "N/A"}
+                        </p>
+                        <span
+                          className={`px-2 py-1 rounded-full text-sm ${order.state === "acknowledged"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-200 text-gray-700"
+                            }`}
+                        >
+                          {order.state || "Unknown"}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-gray-600 mt-1">
                         Date:{" "}
                         {order.orderDate
-                          ? new Date(order.orderDate.$date || order.orderDate)
-                              .toISOString()
-                              .split("T")[0]
-                          : "N/A"}{" "}
-                        | Status: {order.state || "Unknown"}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Total:{" "}
-                        {order.totalAmount
-                          ? order.totalAmount.toFixed(2)
+                          ? new Date(order.orderDate).toLocaleDateString()
                           : "N/A"}
                       </p>
+
+                      {/* ✅ Display order items */}
+                      <div className="mt-3">
+                        <p className="text-gray-700 font-medium">Items:</p>
+                        <ul className="text-sm text-gray-600 list-disc ml-5 mt-1">
+                          {order.orderItems?.map((item) => (
+                            <li key={item.id}>
+                              {item.productName} x {item.quantity} = Rs.{" "}
+                              {(item.price * item.quantity).toFixed(2)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <p className="text-gray-800 font-semibold mt-3">
+                        Total: Rs. {order.total?.toFixed(2) || "0.00"}
+                      </p>
                     </li>
-                  ))
-                )}
-              </ul>
+                  ))}
+                </ul>
+              )}
+
               {orders.length > 0 && (
                 <button
                   onClick={ViewOrdersBtnClick}

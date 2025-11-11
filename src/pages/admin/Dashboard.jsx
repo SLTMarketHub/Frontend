@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   DollarSign,
   ShoppingCart,
@@ -18,14 +18,12 @@ import {
   Activity,
   ArrowUp,
   ArrowDown,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   LineChart,
   Line,
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -35,189 +33,201 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  RadialBarChart,
-  RadialBar,
-} from 'recharts';
-import Card, { StatsCard } from '../../components/common/Card';
-import DataTable from '../../components/common/DataTable';
-import { LoadingState, SkeletonCard } from '../../components/common/LoadingSpinner';
-import { formatCurrency, formatNumber, getRelativeTime, getStatusColor } from '../../utils/formatters';
-import { 
-  tmf622AdminService,
-  tmf629AdminService,
-  tmf668AdminService,
-  tmf620AdminService,
-  tmf678AdminService,
-  tmf681AdminService 
-} from '../../services/admin';
+} from "recharts";
+import Card, { StatsCard } from "../../components/common/Card";
+import DataTable from "../../components/common/DataTable";
+import {
+  LoadingState,
+  SkeletonCard,
+} from "../../components/common/LoadingSpinner";
+import {
+  formatCurrency,
+  formatNumber,
+  getRelativeTime,
+} from "../../utils/formatters";
+import {
+  getTotalRevenue,
+  getTotalOrders,
+  getTotalCustomers,
+  getActiveSellers,
+  getTotalProducts,
+  getRecentOrders,
+  getRecentActivity,
+  getLowStockAlert,
+  getRevenueByCategory,
+  getRevenueTrend,
+  getOrdersTrend,
+  getTopSellingProducts,
+  getSystemAlerts,
+  getPlatformPerformance,
+} from "../../services/admin/dashboard";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(null);
-  const [orderStats, setOrderStats] = useState(null);
-  const [salesData, setSalesData] = useState([
-    { date: '2025-03-12', revenue: 450000, orders: 120 },
-    { date: '2025-03-13', revenue: 520000, orders: 145 },
-    { date: '2025-03-14', revenue: 580000, orders: 165 },
-    { date: '2025-03-15', revenue: 610000, orders: 180 },
-    { date: '2025-03-16', revenue: 690000, orders: 210 },
-    { date: '2025-03-17', revenue: 750000, orders: 235 },
-    { date: '2025-03-18', revenue: 820000, orders: 256 },
-  ]);
-  const [categoryData, setCategoryData] = useState([
-    { name: 'Electronics', value: 35, sales: 234 },
-    { name: 'Fashion', value: 28, sales: 189 },
-    { name: 'Home & Living', value: 22, sales: 156 },
-    { name: 'Beauty', value: 15, sales: 123 },
-    { name: 'Sports', value: 12, sales: 98 },
-    { name: 'Books', value: 8, sales: 67 },
-  ]);
-  const [topProducts, setTopProducts] = useState([
-    { id: 1, name: 'Samsung Galaxy S24', stock: 45, category: 'Electronics', sales: 234, revenue: 95000 },
-    { id: 2, name: 'Nike Air Max 2025', stock: 78, category: 'Sports', sales: 189, revenue: 45000 },
-    { id: 3, name: 'Apple MacBook Pro', stock: 23, category: 'Electronics', sales: 156, revenue: 280000 },
-    { id: 4, name: 'Adidas Running Shoes', stock: 56, category: 'Sports', sales: 123, revenue: 32000 },
-    { id: 5, name: 'Sony WH-1000XM5', stock: 15, category: 'Electronics', sales: 98, revenue: 25000 },
-  ]);
+  const [revenueData, setRevenueData] = useState(null);
+  const [orderData, setOrderData] = useState(null);
+  const [customerData, setCustomerData] = useState(null);
+  const [sellerData, setSellerData] = useState(null);
+  const [productData, setProductData] = useState(null);
+  const [salesData, setSalesData] = useState([]);
   const [performanceData, setPerformanceData] = useState(null);
-  
-  // Chart colors - SLT theme
-  const COLORS = ['#003366', '#0066CC', '#00ACC1', '#008B8B', '#00A651', '#4CAF50'];
+  const [categoryData, setCategoryData] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [pieChartData, setPieChartData] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [systemAlerts, setSystemAlerts] = useState([]);
+  const [lowStockAlerts, setLowStockAlerts] = useState([]);
+  const [lowStockProducts, setLowStockProducts] = useState([]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    try {
-      // Fetch all statistics in parallel using admin services
-      const [orderData, customerData, partnershipData, productData, billingData, recentMessages] = await Promise.all([
-        tmf622AdminService.getOrderStatistics({ period: 'month' }),
-        tmf629AdminService.getCustomerStatistics(),
-        tmf668AdminService.getPartnershipStatistics(),
-        tmf620AdminService.getProductStats(),
-        tmf678AdminService.getBillingStatistics(),
-        tmf681AdminService.getCommunicationStatistics()
-      ]);
-
-      // Fetch recent orders
-      const ordersResponse = await tmf622AdminService.listProductOrders({ limit: 5, sort: '-createdDate' });
-      if (ordersResponse && ordersResponse.length > 0) {
-        const formattedOrders = ordersResponse.map(order => ({
-          id: order.id || `#ORD-${order.externalId || Math.random().toString(36).substr(2, 9)}`,
-          customer: order.relatedParty?.[0]?.name || 'Unknown Customer',
-          amount: order.totalOrderPrice?.[0]?.price?.value || 0,
-          status: order.state || 'pending',
-          date: new Date(order.orderDate || Date.now())
-        }));
-        setRecentOrders(formattedOrders);
-      }
-
-      // Fetch low stock products
-      const lowStockResponse = await tmf620AdminService.listProductOfferings({ 
-        'stock.lte': 20,
-        limit: 5 
-      });
-      if (lowStockResponse && lowStockResponse.length > 0) {
-        setLowStockProducts(lowStockResponse.map(p => ({
-          name: p.name,
-          stock: p.stock || 0,
-          category: p.category?.[0]?.name || 'Uncategorized'
-        })));
-      }
-
-      setOrderStats(orderData);
-      // Only update if we got real data from API
-      if (orderData.ordersByDay && orderData.ordersByDay.length > 0) {
-        setSalesData(orderData.ordersByDay.map(day => ({
-          date: day.date,
-          revenue: day.revenue || day.totalAmount,
-          orders: day.count || day.orders
-        })));
-      }
-      if (orderData.topProducts && orderData.topProducts.length > 0) {
-        setTopProducts(orderData.topProducts.map((p, idx) => ({
-          id: idx + 1,
-          name: p.name,
-          stock: p.stock || Math.floor(Math.random() * 100),
-          category: p.category || 'General',
-          sales: p.orderCount || p.sales,
-          revenue: p.revenue
-        })));
-      }
-      
-      setStats({
-        totalRevenue: orderData.totalRevenue || billingData.totalRevenue || 125678900,
-        totalOrders: orderData.totalOrders || 3456,
-        totalCustomers: customerData.totalCustomers || 1248,
-        totalProducts: productData.totalProducts || 2456,
-        totalSellers: partnershipData.totalPartnerships || 324,
-        activeSellers: partnershipData.activePartnerships || 298,
-        conversionRate: customerData.conversionRate || 3.8,
-        averageOrderValue: orderData.averageOrderValue || 36450,
-        growth: {
-          revenue: orderData.revenueGrowth || 12.5,
-          orders: orderData.orderGrowth || 8.2,
-          customers: customerData.customerGrowthRate || 15.3,
-          products: productData.productGrowth || 4.7
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [revenue, orders, customers, sellers, products] = await Promise.all([
+          getTotalRevenue(),
+          getTotalOrders(),
+          getTotalCustomers(),
+          getActiveSellers(),
+          getTotalProducts()
+        ]);
+        
+        setRevenueData(revenue);
+        setOrderData(orders);
+        setCustomerData(customers);
+        setSellerData(sellers);
+        setProductData(products);
+        
+        // Fetch other data
+        const [recentOrdersData, recentActivityData, lowStockData, categoryDataRes, revenueTrendData, ordersTrendData, topProductsData, systemAlertsData, platformPerformanceData] = await Promise.all([
+          getRecentOrders(),
+          getRecentActivity(),
+          getLowStockAlert(),
+          getRevenueByCategory(),
+          getRevenueTrend(),
+          getOrdersTrend(),
+          getTopSellingProducts(),
+          getSystemAlerts(),
+          getPlatformPerformance()
+        ]);
+        
+        setRecentOrders(recentOrdersData.length > 0 ? recentOrdersData : [
+          {
+            id: 'sample-order-1',
+            externalId: 'ORDER-12345',
+            state: 'acknowledged',
+            orderDate: new Date().toISOString(),
+            relatedParty: [{ role: 'customer', name: 'John Doe' }],
+            orderItem: [
+              { product: { name: 'Bluetooth Speaker' } },
+              { product: { name: 'USB Cable' } }
+            ],
+            relatedPlace: [{ role: 'deliveryAddress', name: 'Sample Address, Colombo, Sri Lanka' }]
+          },
+          {
+            id: 'sample-order-2',
+            externalId: 'ORDER-12346',
+            state: 'completed',
+            orderDate: new Date(Date.now() - 3600000).toISOString(),
+            relatedParty: [{ role: 'customer', name: 'Jane Smith' }],
+            orderItem: [
+              { product: { name: 'Smart Lock' } }
+            ],
+            relatedPlace: [{ role: 'deliveryAddress', name: 'Sample Address, Kandy, Sri Lanka' }]
+          }
+        ]);
+        setRecentActivity(recentActivityData.length > 0 ? recentActivityData : [
+          {
+            message: 'New customer registration: John Doe',
+            time: new Date().toISOString(),
+            color: 'text-green-500',
+            icon: '👤'
+          },
+          {
+            message: 'Product "Bluetooth Speaker" updated by seller',
+            time: new Date(Date.now() - 1800000).toISOString(),
+            color: 'text-blue-500',
+            icon: '📦'
+          },
+          {
+            message: 'Payment processed for order #12345',
+            time: new Date(Date.now() - 3600000).toISOString(),
+            color: 'text-green-500',
+            icon: '💳'
+          }
+        ]);
+        setLowStockAlerts(lowStockData);
+        setLowStockProducts(lowStockData); // Set low stock products for display
+        setCategoryData(categoryDataRes);
+        
+        // Set revenue trend data for charts
+        if (revenueTrendData.trendData && ordersTrendData.trendData) {
+          // Combine revenue and orders data for charts
+          const combinedData = revenueTrendData.trendData.map(revenueDay => {
+            const orderDay = ordersTrendData.trendData.find(o => o.date === revenueDay.date);
+            return {
+              date: revenueDay.date,
+              revenue: revenueDay.revenue,
+              orders: orderDay ? orderDay.orders : 0,
+              billCount: revenueDay.billCount,
+              totalItems: orderDay ? orderDay.totalItems : 0
+            };
+          });
+          setSalesData(combinedData);
+        } else if (revenueTrendData.trendData) {
+          setSalesData(revenueTrendData.trendData);
         }
-      });
-
-      // Update performance metrics
-      setPerformanceData({
-        fulfillmentRate: orderData.fulfillmentRate || 97.8,
-        customerSatisfaction: customerData.averageRating || 4.7,
-        avgResponseTime: recentMessages.averageDeliveryTime || 2.4,
-        returnRate: orderData.returnRate || 1.8
-      });
-
-      // Update category data from order statistics
-      if (orderData.ordersByStatus) {
-        const categories = Object.keys(orderData.ordersByStatus).map((status, idx) => ({
-          name: status,
-          value: orderData.ordersByStatus[status],
-          sales: orderData.ordersByStatus[status],
-          fill: COLORS[idx % COLORS.length]
-        }));
-        setCategoryData(categories);
+        
+        // Set top products data
+        if (topProductsData.topProducts) {
+          setTopProducts(topProductsData.topProducts);
+        }
+        
+        // Set system alerts data
+        setSystemAlerts(systemAlertsData.length > 0 ? systemAlertsData : [
+          {
+            id: 'alert-1',
+            type: 'warning',
+            title: 'High Server Load',
+            message: 'Server CPU usage is above 80% for the past 15 minutes',
+            time: new Date().toISOString(),
+            action: true
+          },
+          {
+            id: 'alert-2',
+            type: 'info',
+            title: 'Maintenance Scheduled',
+            message: 'System maintenance scheduled for tonight at 2:00 AM',
+            time: new Date(Date.now() - 3600000).toISOString(),
+            action: false
+          }
+        ]);
+        
+        // Set pie chart data from category analysis
+        if (categoryDataRes.categories) {
+          const pieData = categoryDataRes.categories.map(cat => ({
+            name: cat.name,
+            value: parseFloat(cat.percentage),
+            count: cat.productCount,
+            activeCount: cat.activeProducts,
+            fill: cat.fill
+          }));
+          setPieChartData(pieData);
+        }
+        
+        // Set platform performance data
+        setPerformanceData(platformPerformanceData);
+        
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      // Keep mock data on error
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const [recentOrders, setRecentOrders] = useState([
-    { id: '#ORD-2025-0234', customer: 'Kamal Perera', amount: 125000, status: 'pending', date: new Date('2025-03-18T10:30:00Z') },
-    { id: '#ORD-2025-0233', customer: 'Nimal Silva', amount: 87500, status: 'confirmed', date: new Date('2025-03-18T09:15:00Z') },
-    { id: '#ORD-2025-0232', customer: 'Saman Fernando', amount: 234000, status: 'shipped', date: new Date('2025-03-17T16:45:00Z') },
-    { id: '#ORD-2025-0231', customer: 'Kumari Jayasinghe', amount: 56200, status: 'delivered', date: new Date('2025-03-17T14:20:00Z') },
-    { id: '#ORD-2025-0230', customer: 'Ravi Mendis', amount: 145800, status: 'cancelled', date: new Date('2025-03-17T11:00:00Z') },
-  ]);
-
-  const recentActivity = [
-    { type: 'order', message: 'New order received from Kamal Perera', time: new Date('2025-03-18T10:30:00Z'), icon: <ShoppingCart size={16} />, color: 'text-blue-600' },
-    { type: 'product', message: 'Product "Samsung Galaxy S24" approved', time: new Date('2025-03-18T09:45:00Z'), icon: <CheckCircle size={16} />, color: 'text-green-600' },
-    { type: 'seller', message: 'New seller registration: Tech Store LK', time: new Date('2025-03-18T08:20:00Z'), icon: <Users size={16} />, color: 'text-slt-primary' },
-    { type: 'alert', message: 'Low stock alert: Apple iPhone 15 Pro', time: new Date('2025-03-17T18:15:00Z'), icon: <AlertCircle size={16} />, color: 'text-orange-600' },
-    { type: 'order', message: 'Order #ORD-2025-0230 cancelled', time: new Date('2025-03-17T17:00:00Z'), icon: <TrendingDown size={16} />, color: 'text-red-600' },
-  ];
-
-  const [lowStockProducts, setLowStockProducts] = useState([
-    { name: 'Apple iPhone 15 Pro', stock: 12, category: 'Electronics' },
-    { name: 'Dell XPS 15 Laptop', stock: 8, category: 'Computers' },
-    { name: 'Sony WH-1000XM5', stock: 15, category: 'Electronics' },
-  ]);
-  
-  // Format data for pie chart
-  const pieChartData = categoryData.map((item, index) => ({
-    ...item,
-    fill: COLORS[index % COLORS.length]
-  }));
+    };
+    
+    fetchData();
+  }, []);
 
   // Custom tooltip for charts
   const CustomTooltip = ({ active, payload, label }) => {
@@ -227,7 +237,10 @@ const Dashboard = () => {
           <p className="text-sm font-medium text-gray-900">{label}</p>
           {payload.map((entry, index) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.name.includes('Revenue') ? formatCurrency(entry.value) : formatNumber(entry.value)}
+              {entry.name}:{" "}
+              {entry.name.includes("Revenue")
+                ? formatCurrency(entry.value)
+                : formatNumber(entry.value)}
             </p>
           ))}
         </div>
@@ -236,47 +249,14 @@ const Dashboard = () => {
     return null;
   };
 
-  const systemAlerts = [
-    { id: 1, type: 'warning', title: 'Pending Seller Approvals', message: '5 sellers waiting for approval', time: new Date('2025-03-18T09:30:00Z'), action: '/admin/sellers' },
-    { id: 2, type: 'error', title: 'Payment Gateway Issue', message: 'Stripe connection failed - 3 pending payments', time: new Date('2025-03-18T08:15:00Z'), action: '/admin/settings' },
-    { id: 3, type: 'info', title: 'System Maintenance', message: 'Scheduled maintenance on March 20, 2025 at 2:00 AM', time: new Date('2025-03-17T16:00:00Z'), action: null },
-    { id: 4, type: 'success', title: 'Backup Completed', message: 'Daily database backup completed successfully', time: new Date('2025-03-18T02:00:00Z'), action: null },
-  ];
-
-  const orderColumns = [
-    {
-      key: 'id',
-      label: 'Order ID',
-      render: (value) => <span className="font-mono text-sm font-semibold text-slt-primary">{value}</span>,
-    },
-    { key: 'customer', label: 'Customer' },
-    {
-      key: 'amount',
-      label: 'Amount',
-      render: (value) => <span className="font-semibold text-gray-900">{formatCurrency(value)}</span>,
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (value) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </span>
-      ),
-    },
-    {
-      key: 'date',
-      label: 'Date',
-      render: (value) => <span className="text-sm text-gray-600">{getRelativeTime(value)}</span>,
-    },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-        <p className="text-gray-600 mt-1">Welcome back! Here's what's happening with your platform today.</p>
+        <p className="text-gray-600 mt-1">
+          Welcome back! Here's what's happening with your platform today.
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -288,47 +268,46 @@ const Dashboard = () => {
               <SkeletonCard key={i} />
             ))}
           </div>
-        }
-      >
+        }>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <StatsCard
             title="Total Revenue"
-            value={formatCurrency(stats?.totalRevenue)}
+            value={formatCurrency(revenueData?.totalRevenue || 0)}
             icon={<DollarSign size={24} />}
             trend="up"
-            trendValue={`+${stats?.growth?.revenue || 12.5}%`}
+            trendValue={`${revenueData?.billCount || 0} bills`}
             color="primary"
           />
           <StatsCard
             title="Total Orders"
-            value={formatNumber(stats?.totalOrders)}
+            value={formatNumber(orderData?.totalOrders || 0)}
             icon={<ShoppingCart size={24} />}
             trend="up"
-            trendValue={`+${stats?.growth?.orders || 8.2}%`}
+            trendValue={`${orderData?.orderCount || 0} orders`}
             color="secondary"
           />
           <StatsCard
             title="Total Customers"
-            value={formatNumber(stats?.totalCustomers)}
+            value={formatNumber(customerData?.totalCustomers || 0)}
             icon={<Users size={24} />}
             trend="up"
-            trendValue={`+${stats?.growth?.customers || 15.3}%`}
+            trendValue={`${customerData?.customerCount || 0} customers`}
             color="success"
           />
           <StatsCard
             title="Active Sellers"
-            value={formatNumber(stats?.activeSellers)}
+            value={formatNumber(sellerData?.activeSellers || 0)}
             icon={<Store size={24} />}
             trend="up"
-            trendValue={`${stats?.totalSellers} total`}
+            trendValue={`${sellerData?.sellerCount || 0} total`}
             color="warning"
           />
           <StatsCard
             title="Total Products"
-            value={formatNumber(stats?.totalProducts)}
+            value={formatNumber(productData?.totalProducts || 0)}
             icon={<Package size={24} />}
             trend="up"
-            trendValue={`+${stats?.growth?.products || 4.7}%`}
+            trendValue={`${productData?.activeProducts || 0} active`}
             color="info"
           />
         </div>
@@ -341,17 +320,22 @@ const Dashboard = () => {
             <AreaChart data={salesData}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00A651" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#00A651" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#00A651" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#00A651" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
+              <XAxis
+                dataKey="date"
                 tick={{ fontSize: 12 }}
-                tickFormatter={(value) => new Date(value).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                tickFormatter={(value) =>
+                  new Date(value).toLocaleDateString("en", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                }
               />
-              <YAxis 
+              <YAxis
                 tick={{ fontSize: 12 }}
                 tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
               />
@@ -372,10 +356,15 @@ const Dashboard = () => {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={salesData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
+              <XAxis
                 dataKey="date"
                 tick={{ fontSize: 12 }}
-                tickFormatter={(value) => new Date(value).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                tickFormatter={(value) =>
+                  new Date(value).toLocaleDateString("en", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                }
               />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip content={<CustomTooltip />} />
@@ -385,7 +374,7 @@ const Dashboard = () => {
                 dataKey="orders"
                 stroke="#0066CC"
                 strokeWidth={2}
-                dot={{ fill: '#0066CC' }}
+                dot={{ fill: "#0066CC" }}
                 name="Orders"
               />
             </LineChart>
@@ -394,8 +383,11 @@ const Dashboard = () => {
       </div>
 
       {/* Category Performance and Top Products */}
+      {/* COMMENTED OUT: These features require Product Catalog and Analytics APIs that are not currently available
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title="Revenue by Category" subtitle="Category-wise revenue distribution">
+        <Card
+          title="Revenue by Category"
+          subtitle="Category-wise revenue distribution">
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -406,13 +398,17 @@ const Dashboard = () => {
                 label={(entry) => `${entry.name}: ${entry.value}%`}
                 outerRadius={80}
                 fill="#8884d8"
-                dataKey="value"
-              >
+                dataKey="value">
                 {pieChartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Tooltip 
+                formatter={(value, name, props) => [
+                  `${value}% (${props.payload.count} products, ${props.payload.activeCount} active)`,
+                  'Distribution'
+                ]} 
+              />
             </PieChart>
           </ResponsiveContainer>
         </Card>
@@ -420,20 +416,43 @@ const Dashboard = () => {
         <Card title="Top Selling Products" subtitle="Best performing products">
           <div className="space-y-3">
             {topProducts.slice(0, 5).map((product) => (
-              <div key={product.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:from-slt-light hover:to-blue-50 transition-all cursor-pointer">
+              <div
+                key={product.id}
+                className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:from-slt-light hover:to-blue-50 transition-all cursor-pointer">
                 <div className="flex-1">
-                  <p className="font-medium text-sm text-gray-900">{product.name}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slt-primary bg-slt-light px-2 py-1 rounded">
+                      #{product.rank}
+                    </span>
+                    <p className="font-medium text-sm text-gray-900">
+                      {product.name}
+                    </p>
+                  </div>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-500">{product.sales} sold</span>
-                    <span className="text-xs px-2 py-0.5 bg-slt-light text-slt-secondary rounded">{product.category}</span>
+                    <span className="text-xs text-gray-500">
+                      {product.totalQuantity} units sold
+                    </span>
+                    <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                      {product.orderCount} orders
+                    </span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-sm text-slt-primary">{formatCurrency(product.revenue)}</p>
-                  <p className="text-xs text-gray-500">Stock: {product.stock}</p>
+                  <p className="font-bold text-sm text-slt-primary">
+                    Avg: {product.averageQuantityPerOrder}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    per order
+                  </p>
                 </div>
               </div>
             ))}
+            {topProducts.length === 0 && (
+              <div className="text-center py-6 text-gray-500">
+                <Package size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No product sales data available</p>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -442,74 +461,87 @@ const Dashboard = () => {
             <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg">
               <div>
                 <p className="text-sm text-gray-600">Fulfillment Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceData?.fulfillmentRate}%</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {performanceData?.fulfillmentRate}%
+                </p>
               </div>
               <CheckCircle className="text-green-600" size={32} />
             </div>
             <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
               <div>
                 <p className="text-sm text-gray-600">Customer Satisfaction</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceData?.customerSatisfaction}/5</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {performanceData?.customerSatisfaction}/5
+                </p>
               </div>
               <Activity className="text-blue-600" size={32} />
             </div>
             <div className="flex items-center justify-between p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-lg">
               <div>
                 <p className="text-sm text-gray-600">Avg Response Time</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceData?.avgResponseTime}h</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {performanceData?.avgResponseTime}h
+                </p>
               </div>
               <TrendingUp className="text-slt-teal" size={32} />
             </div>
           </div>
         </Card>
       </div>
+      END COMMENTED SECTION */}
 
       {/* System Alerts & Notifications */}
-      <Card title="System Alerts" subtitle="Important notifications and warnings" 
+      {/* COMMENTED OUT: System Alerts require notification/alert APIs that are not currently available
+      <Card
+        title="System Alerts"
+        subtitle="Important notifications and warnings"
         headerAction={
           <button className="p-2 hover:bg-gray-100 rounded-lg transition">
             <Bell size={20} className="text-gray-600" />
           </button>
-        }
-      >
+        }>
         <div className="space-y-3">
           {systemAlerts.map((alert) => (
             <div
               key={alert.id}
               className={`p-4 rounded-lg border-l-4 ${
-                alert.type === 'error'
-                  ? 'bg-red-50 border-error'
-                  : alert.type === 'warning'
-                  ? 'bg-orange-50 border-warning'
-                  : alert.type === 'success'
-                  ? 'bg-green-50 border-success'
-                  : 'bg-blue-50 border-info'
-              }`}
-            >
+                alert.type === "error"
+                  ? "bg-red-50 border-error"
+                  : alert.type === "warning"
+                  ? "bg-orange-50 border-warning"
+                  : alert.type === "success"
+                  ? "bg-green-50 border-success"
+                  : "bg-blue-50 border-info"
+              }`}>
               <div className="flex items-start space-x-3">
-                <div className={`mt-0.5 ${
-                  alert.type === 'error'
-                    ? 'text-error'
-                    : alert.type === 'warning'
-                    ? 'text-warning'
-                    : alert.type === 'success'
-                    ? 'text-success'
-                    : 'text-info'
-                }`}>
-                  {alert.type === 'error' ? (
+                <div
+                  className={`mt-0.5 ${
+                    alert.type === "error"
+                      ? "text-error"
+                      : alert.type === "warning"
+                      ? "text-warning"
+                      : alert.type === "success"
+                      ? "text-success"
+                      : "text-info"
+                  }`}>
+                  {alert.type === "error" ? (
                     <XCircle size={20} />
-                  ) : alert.type === 'warning' ? (
+                  ) : alert.type === "warning" ? (
                     <AlertTriangle size={20} />
-                  ) : alert.type === 'success' ? (
+                  ) : alert.type === "success" ? (
                     <CheckCircle size={20} />
                   ) : (
                     <Info size={20} />
                   )}
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-900 text-sm">{alert.title}</p>
+                  <p className="font-semibold text-gray-900 text-sm">
+                    {alert.title}
+                  </p>
                   <p className="text-sm text-gray-700 mt-1">{alert.message}</p>
-                  <p className="text-xs text-gray-500 mt-2">{getRelativeTime(alert.time)}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {getRelativeTime(alert.time)}
+                  </p>
                 </div>
                 {alert.action && (
                   <button className="px-3 py-1 text-xs font-medium text-slt-primary hover:bg-slt-light rounded-lg transition">
@@ -521,18 +553,87 @@ const Dashboard = () => {
           ))}
         </div>
       </Card>
+      END COMMENTED SECTION */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Orders */}
         <div className="lg:col-span-2">
           <Card title="Recent Orders" subtitle="Latest platform orders">
-            <DataTable
-              data={recentOrders}
-              columns={orderColumns}
-              pagination={false}
-              searchable={false}
-              sortable={false}
-            />
+            <div className="space-y-4">
+              {recentOrders.length > 0 ? (
+                recentOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:from-blue-50 hover:to-indigo-50 transition-all cursor-pointer border border-gray-200">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-sm font-bold text-gray-900">
+                          {order.externalId || order.id}
+                        </span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          order.state === 'acknowledged' 
+                            ? 'bg-blue-100 text-blue-700'
+                            : order.state === 'completed'
+                            ? 'bg-green-100 text-green-700'
+                            : order.state === 'cancelled'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {order.state}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <Users size={14} />
+                          {order.relatedParty?.find(p => p.role === 'customer')?.name || 'Unknown Customer'}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Package size={14} />
+                          {order.orderItem?.length || 0} items
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Activity size={14} />
+                          {getRelativeTime(order.orderDate)}
+                        </span>
+                      </div>
+                      {order.orderItem && order.orderItem.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {order.orderItem.slice(0, 3).map((item, index) => (
+                            <span
+                              key={index}
+                              className="text-xs px-2 py-1 bg-slt-light text-slt-secondary rounded">
+                              {item.product?.name}
+                            </span>
+                          ))}
+                          {order.orderItem.length > 3 && (
+                            <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">
+                              +{order.orderItem.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <button
+                        onClick={() => navigate(`/admin/orders/${order.id}`)}
+                        className="px-3 py-1 text-xs font-medium text-slt-primary hover:bg-slt-light rounded-lg transition">
+                        View Details
+                      </button>
+                      {order.relatedPlace?.find(p => p.role === 'deliveryAddress') && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          📍 {order.relatedPlace.find(p => p.role === 'deliveryAddress').name.split(',')[1]?.trim() || 'Location'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <ShoppingCart size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No recent orders available</p>
+                </div>
+              )}
+            </div>
           </Card>
         </div>
 
@@ -540,13 +641,17 @@ const Dashboard = () => {
         <Card title="Recent Activity" subtitle="Platform activity feed">
           <div className="space-y-4">
             {recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-start space-x-3 pb-3 border-b border-gray-100 last:border-0">
+              <div
+                key={index}
+                className="flex items-start space-x-3 pb-3 border-b border-gray-100 last:border-0">
                 <div className={`mt-0.5 ${activity.color}`}>
                   {activity.icon}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-900">{activity.message}</p>
-                  <p className="text-xs text-gray-500 mt-1">{getRelativeTime(activity.time)}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {getRelativeTime(activity.time)}
+                  </p>
                 </div>
               </div>
             ))}
@@ -560,13 +665,17 @@ const Dashboard = () => {
         <Card title="Low Stock Alert" subtitle="Products running low">
           <div className="space-y-3">
             {lowStockProducts.map((product, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
                 <div>
                   <p className="font-medium text-gray-900">{product.name}</p>
                   <p className="text-sm text-gray-600">{product.category}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-orange-600">{product.stock}</p>
+                  <p className="text-lg font-bold text-orange-600">
+                    {product.stock}
+                  </p>
                   <p className="text-xs text-gray-500">units left</p>
                 </div>
               </div>
@@ -577,32 +686,54 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <Card title="Quick Actions" subtitle="Common administrative tasks">
           <div className="grid grid-cols-2 gap-4">
-            <button 
-              onClick={() => navigate('/admin/sellers')}
+            <button
+              onClick={() => navigate("/admin/sellers")}
               className="p-4 text-left bg-gradient-to-r from-slt-light to-blue-100 rounded-xl hover:from-blue-100 hover:to-cyan-50 transition-all group hover:scale-105">
-              <UserCheck size={24} className="text-slt-secondary mb-2 group-hover:scale-110 transition-transform" />
-              <p className="text-sm font-medium text-gray-900">Approve Sellers</p>
-              <p className="text-xs text-gray-600 mt-1">{stats?.totalSellers - stats?.activeSellers || 26} pending</p>
+              <UserCheck
+                size={24}
+                className="text-slt-secondary mb-2 group-hover:scale-110 transition-transform"
+              />
+              <p className="text-sm font-medium text-gray-900">
+                Approve Sellers
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                {sellerData ? Math.max(0, (sellerData.sellerCount || 0) - (sellerData.activeSellers || 0)) : 0} pending
+              </p>
             </button>
-            <button 
-              onClick={() => navigate('/admin/products')}
+            <button
+              onClick={() => navigate("/admin/products")}
               className="p-4 text-left bg-gradient-to-r from-green-50 to-emerald-100 rounded-xl hover:from-emerald-100 hover:to-green-200 transition-all group hover:scale-105">
-              <Package size={24} className="text-slt-green mb-2 group-hover:scale-110 transition-transform" />
-              <p className="text-sm font-medium text-gray-900">Moderate Products</p>
+              <Package
+                size={24}
+                className="text-slt-green mb-2 group-hover:scale-110 transition-transform"
+              />
+              <p className="text-sm font-medium text-gray-900">
+                Moderate Products
+              </p>
               <p className="text-xs text-gray-600 mt-1">8 flagged</p>
             </button>
-            <button 
-              onClick={() => navigate('/admin/orders')}
+            <button
+              onClick={() => navigate("/admin/orders")}
               className="p-4 text-left bg-gradient-to-r from-teal-50 to-cyan-100 rounded-xl hover:from-cyan-100 hover:to-teal-200 transition-all group hover:scale-105">
-              <AlertCircle size={24} className="text-slt-teal mb-2 group-hover:scale-110 transition-transform" />
-              <p className="text-sm font-medium text-gray-900">Resolve Disputes</p>
+              <AlertCircle
+                size={24}
+                className="text-slt-teal mb-2 group-hover:scale-110 transition-transform"
+              />
+              <p className="text-sm font-medium text-gray-900">
+                Resolve Disputes
+              </p>
               <p className="text-xs text-gray-600 mt-1">3 open</p>
             </button>
-            <button 
-              onClick={() => navigate('/admin/support')}
+            <button
+              onClick={() => navigate("/admin/support")}
               className="p-4 text-left bg-gradient-to-r from-orange-50 to-amber-100 rounded-xl hover:from-amber-100 hover:to-orange-200 transition-all group hover:scale-105">
-              <Bell size={24} className="text-orange-600 mb-2 group-hover:scale-110 transition-transform" />
-              <p className="text-sm font-medium text-gray-900">Send Notifications</p>
+              <Bell
+                size={24}
+                className="text-orange-600 mb-2 group-hover:scale-110 transition-transform"
+              />
+              <p className="text-sm font-medium text-gray-900">
+                Send Notifications
+              </p>
               <p className="text-xs text-gray-600 mt-1">Campaign tools</p>
             </button>
           </div>

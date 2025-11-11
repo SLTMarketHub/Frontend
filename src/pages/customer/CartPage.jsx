@@ -9,7 +9,6 @@ const CartPage = () => {
   const navigate = useNavigate();
   const { cart, removeFromCart, updateCartItemQuantity, clearCart } = useCart();
   const [selectedItems, setSelectedItems] = useState([]);
-  const [shipping, setShipping] = useState(null);
   const [payment, setPayment] = useState(null);
 
   // Sync selected items with cart whenever cart changes
@@ -42,34 +41,24 @@ const CartPage = () => {
     return sum + numericPrice * (item.quantity || 1);
   }, 0);
 
-  const discount = subtotal > 10000 ? subtotal * 0.05 : subtotal > 5000 ? 300 : 0;
-  const shippingCost = shipping === "standard" ? 300 : shipping === "express" ? 600 : 0;
-  const total = subtotal - discount + shippingCost;
+  const total = subtotal;
 
   // Proceed to checkout
   const handleCheckout = () => {
-    if (selectedItems.length === 0) {
-      alert("⚠️ Please select at least one item to proceed.");
-      return;
-    }
-    if (!shipping || !payment) {
-      alert("⚠️ Please select shipping and payment options.");
-      return;
-    }
 
     const user = JSON.parse(localStorage.getItem("user"));
 
     navigate("/checkout", {
       state: {
         cartItems: selectedItems,
-        shipping,
-        payment,
+        // shipping,
+        // payment,
         total,
         customerId: user?.id,
       },
     });
 
-    clearCart();
+    // clearCart();
   };
 
   return (
@@ -155,7 +144,7 @@ const CartPage = () => {
           )}
 
           {/* Shipping Options */}
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <h3 className="font-semibold mb-2">Shipping Options</h3>
             <div className="space-y-2">
               <label className="flex items-center gap-2">
@@ -179,10 +168,10 @@ const CartPage = () => {
                 Express (Rs.600)
               </label>
             </div>
-          </div>
+          </div> */}
 
           {/* Payment Options */}
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <h3 className="font-semibold mb-2">Payment Method</h3>
             <div className="space-y-2">
               <label className="flex items-center gap-2">
@@ -206,7 +195,7 @@ const CartPage = () => {
                 Card Payment
               </label>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Summary */}
@@ -219,14 +208,6 @@ const CartPage = () => {
           <p className="flex justify-between text-gray-700">
             <span>Subtotal:</span>
             <span>Rs.{subtotal.toFixed(2)}</span>
-          </p>
-          <p className="flex justify-between text-gray-700">
-            <span>Discount:</span>
-            <span>-Rs.{discount.toFixed(2)}</span>
-          </p>
-          <p className="flex justify-between text-gray-700">
-            <span>Shipping:</span>
-            <span>{shippingCost ? `Rs.${shippingCost}` : "—"}</span>
           </p>
           <hr className="my-2 border-gray-300" />
           <p className="flex justify-between font-bold text-lg text-gray-800">
