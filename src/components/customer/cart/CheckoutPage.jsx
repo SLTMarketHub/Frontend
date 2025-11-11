@@ -138,10 +138,11 @@ const CheckoutPage = () => {
         product: {
           id: item.id || item.productId,
           name: item.name,
-          href: `${import.meta.env.VITE_ENDPOINT_TMF620_OFFERING}${item.id || item.productId}`
+          href: `${import.meta.env.VITE_ENDPOINT_TMF620_OFFERING}${item.id || item.productId}`,
+          price: parseFloat(item.price)
         },
         quantity: item.quantity || 1,
-        state: "acknowledged"
+        state: "acknowledged",
       }));
 
       const payload = {
@@ -170,13 +171,16 @@ const CheckoutPage = () => {
             date: new Date(),
             author: customerData?.name || customerId
           }
-        ]
+        ],
+        total: grandTotal
       };
-
+      console.log(payload)
       const res = await axios.post(
         import.meta.env.VITE_ENDPOINT_TMF622_ORDER,
         payload
       );
+      console.log("Order placed")
+      
 
       alert(`✅ Order placed successfully!\nOrder ID: ${res.data.id}`);
       localStorage.removeItem("cart");

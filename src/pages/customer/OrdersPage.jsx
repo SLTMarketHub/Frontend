@@ -11,13 +11,13 @@ const OrdersPage = () => {
   const [error, setError] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
 
-  // ✅ Load user details from localStorage
+  // Load user details from localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) setUserDetails(JSON.parse(storedUser));
   }, []);
 
-  // ✅ Fetch orders by customer ID
+  // Fetch orders by customer ID
   useEffect(() => {
     if (!userDetails?.id) return;
 
@@ -32,12 +32,11 @@ const OrdersPage = () => {
         const data = await res.json();
         console.log("✅ Backend response:", data);
 
-        // 🧠 Your backend returns a single order object, not { status, productOrder }
-        // So we handle both possible cases here.
+        // Backend returns an array already
         if (Array.isArray(data)) {
           setOrders(data);
-        } else if (data && typeof data === "object" && data.id) {
-          setOrders([data]); // wrap single order object in array
+        } else if (data && data.id) {
+          setOrders([data]);
         } else {
           setError("No orders found");
         }
@@ -52,7 +51,6 @@ const OrdersPage = () => {
     fetchOrders();
   }, [userDetails]);
 
-  // ✅ Loader
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -65,7 +63,6 @@ const OrdersPage = () => {
     );
   }
 
-  // ✅ Error handler
   if (error) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -78,11 +75,9 @@ const OrdersPage = () => {
     );
   }
 
-  // ✅ Main content
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
-
       <main className="flex-1 px-6 py-12 max-w-5xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-800">My Orders</h1>
@@ -101,10 +96,10 @@ const OrdersPage = () => {
             {orders.map((order) => {
               const orderDate = order.orderDate
                 ? new Date(order.orderDate).toLocaleDateString("en-GB", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                })
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })
                 : "N/A";
 
               return (
@@ -122,10 +117,11 @@ const OrdersPage = () => {
                     </div>
 
                     <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium mt-3 md:mt-0 ${order.state === "acknowledged"
+                      className={`px-3 py-1 rounded-full text-sm font-medium mt-3 md:mt-0 ${
+                        order.state === "acknowledged"
                           ? "bg-blue-100 text-blue-700"
                           : "bg-gray-100 text-gray-700"
-                        }`}
+                      }`}
                     >
                       {order.state
                         ? order.state.charAt(0).toUpperCase() + order.state.slice(1)
@@ -143,18 +139,25 @@ const OrdersPage = () => {
                             key={item.id}
                             className="flex justify-between items-center border p-3 rounded-lg bg-gray-50"
                           >
-                            <span className="text-gray-700">
-                              {item.productName || "Unnamed Product"}
-                            </span>
-                            <span className="text-gray-600 text-sm">
-                              Qty: {item.quantity}
-                            </span>
+                            <div>
+                              <span className="text-gray-700">{item.productName}</span>
+                              <span className="text-gray-700"> -</span>
+                              <span className="text-gray-500 text-sm ml-2">
+                                LKR {item.price?.toFixed(2)}
+                              </span>
+                            </div>
+                            <span className="text-gray-600 text-sm">Qty: {item.quantity}</span>
                           </li>
                         ))
                       ) : (
                         <p className="text-gray-500 text-sm">No items found.</p>
                       )}
                     </ul>
+                  </div>
+
+                  {/* Total */}
+                  <div className="mt-4 text-right font-semibold text-gray-800">
+                    Total: ${order.total?.toFixed(2) ?? "0.00"}
                   </div>
 
                   {/* Delivery Address */}
@@ -171,11 +174,9 @@ const OrdersPage = () => {
                 </div>
               );
             })}
-
           </div>
         )}
       </main>
-
       <Footer />
     </div>
   );
