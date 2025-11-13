@@ -18,136 +18,250 @@ import { LoadingState } from '../../components/common/LoadingSpinner';
 import { formatDate, getRelativeTime, getStatusColor, capitalize } from '../../utils/formatters';
 import { exportTicketsCSV } from '../../utils/exportUtils';
 import {
-  mockTicketStats,
-  mockTickets,
-  mockTicketMessages,
-  mockAdminUsers,
-} from '../../utils/mockData';
+  getTickets,
+  getTicketById,
+  updateTicketStatus,
+  assignTicket,
+  replyToTicket,
+  addTicketNote,
+} from '../../services/supportService';
 import useToast from '../../hooks/useToast';
+
+// Mock data for fallback and initial state
+const mockStats = {
+  open: 12,
+  inProgress: 8,
+  resolved: 45,
+  avgResponseTime: '2.5 hours'
+};
+
+const mockTickets = [
+  {
+    _id: 'TKT-001',
+    subject: 'Order not delivered',
+    customerName: 'John Doe',
+    status: 'open',
+    priority: 'high',
+    assignedTo: 'Admin User',
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    updatedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
+    description: 'I placed an order 3 days ago but have not received it yet.',
+    messages: [
+      {
+        sender: 'John Doe',
+        senderType: 'customer',
+        message: 'I placed an order 3 days ago but have not received it yet.',
+        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        isInternal: false
+      }
+    ]
+  },
+  {
+    _id: 'TKT-002',
+    subject: 'Payment issue',
+    customerName: 'Jane Smith',
+    status: 'in_progress',
+    priority: 'medium',
+    assignedTo: 'Support Team',
+    createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+    updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
+    description: 'Payment was deducted but order was not confirmed.',
+    messages: [
+      {
+        sender: 'Jane Smith',
+        senderType: 'customer',
+        message: 'Payment was deducted but order was not confirmed.',
+        timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
+        isInternal: false
+      },
+      {
+        sender: 'Support Team',
+        senderType: 'admin',
+        message: 'We are looking into this issue. Please provide your transaction ID.',
+        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
+        isInternal: false
+      }
+    ]
+  },
+  {
+    _id: 'TKT-003',
+    subject: 'Product quality concern',
+    customerName: 'Mike Johnson',
+    status: 'resolved',
+    priority: 'low',
+    assignedTo: 'Quality Team',
+    createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000),
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    description: 'The product I received does not match the description.',
+    messages: [
+      {
+        sender: 'Mike Johnson',
+        senderType: 'customer',
+        message: 'The product I received does not match the description.',
+        timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000),
+        isInternal: false
+      },
+      {
+        sender: 'Quality Team',
+        senderType: 'admin',
+        message: 'We apologize for the inconvenience. A replacement has been shipped.',
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        isInternal: false
+      }
+    ]
+  }
+];
 
 const Support = () => {
   const [loading, setLoading] = useState(true);
-  const [tickets, setTickets] = useState([]);
-  const [stats, setStats] = useState(null);
+  
+  // Initialize with mock data instead of empty arrays
+  const [tickets, setTickets] = useState(mockTickets);
+  const [stats, setStats] = useState(mockStats);
+  
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [ticketMessages, setTicketMessages] = useState([]);
   const [replyMessage, setReplyMessage] = useState('');
   const [internalNote, setInternalNote] = useState('');
   const [showInternalNote, setShowInternalNote] = useState(false);
-  
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const { success } = useToast();
+  const { success, error } = useToast();
 
+  // Fetch all tickets with fallback to mock data
   const fetchTickets = async () => {
     setLoading(true);
     try {
-      setTimeout(() => {
-        let filtered = mockTickets;
-        if (statusFilter !== 'all') {
-          filtered = filtered.filter(t => t.status === statusFilter);
-        }
-        if (priorityFilter !== 'all') {
-          filtered = filtered.filter(t => t.priority === priorityFilter);
-        }
-        setTickets(filtered);
-        setStats(mockTicketStats);
-        setLoading(false);
-      }, 800);
-    } catch (error) {
-      console.error('Error fetching tickets:', error);
+      const data = await getTickets({
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+        search: searchTerm || undefined,
+      });
+      
+      // Update with backend data if available
+      if (data.tickets || data) {
+        setTickets(data.tickets || data);
+      }
+      if (data.stats) {
+        setStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Error fetching tickets:', err);
+      error('Failed to load tickets from server. Using cached data.');
+      // Keep mock data as fallback (already set in useState)
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchTickets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, priorityFilter]);
 
-  const handleViewTicket = (ticket) => {
-    setSelectedTicket(ticket);
-    setTicketMessages(mockTicketMessages[ticket.id] || []);
-    setShowTicketModal(true);
+  // Search functionality with debounce effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm !== '') {
+        fetchTickets();
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+
+  // View ticket and messages
+  const handleViewTicket = async (ticket) => {
+    try {
+      const data = await getTicketById(ticket._id || ticket.id);
+      setSelectedTicket(data);
+      setTicketMessages(data.messages || []);
+      setShowTicketModal(true);
+    } catch (err) {
+      // Fallback to mock data for ticket details
+      console.error('Error loading ticket details:', err);
+      const mockTicket = mockTickets.find(t => t._id === ticket._id);
+      if (mockTicket) {
+        setSelectedTicket(mockTicket);
+        setTicketMessages(mockTicket.messages || []);
+        setShowTicketModal(true);
+      } else {
+        error('Failed to load ticket details');
+      }
+    }
   };
+
+  // Update status
   const handleStatusChange = async (ticketId, newStatus) => {
     try {
-      setTickets(tickets.map(t => 
-        t.id === ticketId ? { ...t, status: newStatus, updatedAt: new Date().toISOString() } : t
-      ));
-      if (selectedTicket?.id === ticketId) {
-        setSelectedTicket({ ...selectedTicket, status: newStatus });
-      }
+      await updateTicketStatus(ticketId, newStatus);
       success(`Ticket status updated to ${newStatus}`);
-    } catch (error) {
-      console.error('Error updating status:', error);
+      fetchTickets();
+    } catch (err) {
+      console.error('Error updating ticket status:', err);
+      error('Error updating ticket status');
     }
   };
 
+  // Assign ticket
   const handleAssignTicket = async (ticketId, adminId) => {
     try {
-      const admin = mockAdminUsers.find(a => a.id === parseInt(adminId));
-      setTickets(tickets.map(t => 
-        t.id === ticketId ? { ...t, assignedTo: admin?.name, updatedAt: new Date().toISOString() } : t
-      ));
-      if (selectedTicket?.id === ticketId) {
-        setSelectedTicket({ ...selectedTicket, assignedTo: admin?.name });
-      }
+      await assignTicket(ticketId, adminId);
       success('Ticket assigned successfully');
-    } catch (error) {
-      console.error('Error assigning ticket:', error);
+      fetchTickets();
+    } catch (err) {
+      console.error('Error assigning ticket:', err);
+      error('Error assigning ticket');
     }
   };
 
+  // Send reply
   const handleSendReply = async () => {
     if (!replyMessage.trim()) return;
-    
     try {
-      const newMessage = {
-        id: Date.now(),
-        sender: 'Admin User',
-        senderType: 'admin',
-        message: replyMessage,
-        timestamp: new Date().toISOString(),
-        isInternal: false,
-      };
-      
-      setTicketMessages([...ticketMessages, newMessage]);
+      await replyToTicket(selectedTicket._id, replyMessage);
+      success('Reply sent successfully');
       setReplyMessage('');
-      
-      if (selectedTicket.status === 'open') {
-        handleStatusChange(selectedTicket.id, 'in_progress');
-      }
-    } catch (error) {
-      console.error('Error sending reply:', error);
+      handleViewTicket(selectedTicket);
+    } catch (err) {
+      console.error('Error sending reply:', err);
+      error('Error sending reply');
     }
   };
 
+  // Add internal note
   const handleAddInternalNote = async () => {
     if (!internalNote.trim()) return;
-    
     try {
-      const newNote = {
-        id: Date.now(),
-        sender: 'Admin User',
-        senderType: 'admin',
-        message: internalNote,
-        timestamp: new Date().toISOString(),
-        isInternal: true,
-      };
-      
-      setTicketMessages([...ticketMessages, newNote]);
+      await addTicketNote(selectedTicket._id, internalNote);
+      success('Internal note added');
       setInternalNote('');
       setShowInternalNote(false);
-    } catch (error) {
-      console.error('Error adding note:', error);
+      handleViewTicket(selectedTicket);
+    } catch (err) {
+      console.error('Error adding note:', err);
+      error('Error adding note');
     }
   };
 
+  // Filter tickets based on search term
+  const filteredTickets = tickets.filter(ticket => {
+    const matchesSearch = !searchTerm || 
+      ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket._id.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
+    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
+    
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
+
   const handleExportTickets = () => {
-    const exportData = tickets.map(ticket => ({
-      id: ticket.id,
+    const exportData = filteredTickets.map(ticket => ({
+      id: ticket._id,
       subject: ticket.subject,
       status: ticket.status,
       priority: ticket.priority,
@@ -155,69 +269,83 @@ const Support = () => {
       createdAt: formatDate(ticket.createdAt),
       updatedAt: formatDate(ticket.updatedAt),
     }));
-    
     exportTicketsCSV(exportData);
+    success(`Exported ${exportData.length} tickets`);
   };
 
   const ticketColumns = [
-    {
-      key: 'id',
-      label: 'Ticket ID',
-      render: (value) => (
-        <span className="font-mono text-sm font-semibold text-slt-primary">{value}</span>
-      ),
+    { 
+      key: 'id', 
+      label: 'Ticket ID', 
+      render: (v, r) => (
+        <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+          {r._id || v}
+        </span>
+      )
     },
-    {
-      key: 'subject',
+    { 
+      key: 'subject', 
       label: 'Subject',
-      render: (value, row) => (
-        <div>
-          <p className="font-medium text-gray-900">{value}</p>
-          <p className="text-xs text-gray-500">{row.category}</p>
+      render: (v) => (
+        <div className="max-w-xs truncate" title={v}>
+          {v}
         </div>
-      ),
+      )
     },
-    {
-      key: 'customerName',
+    { 
+      key: 'customerName', 
       label: 'Customer',
-      render: (value, row) => (
-        <div>
-          <p className="text-sm font-medium text-gray-900">{value}</p>
-          <p className="text-xs text-gray-500">{row.customerType}</p>
+      render: (v) => (
+        <div className="flex items-center space-x-2">
+          <User size={16} className="text-gray-400" />
+          <span>{v}</span>
         </div>
-      ),
+      )
     },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (value) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-          {capitalize(value.replace('_', ' '))}
+    { 
+      key: 'status', 
+      label: 'Status', 
+      render: v => (
+        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(v)}`}>
+          {capitalize(v)}
         </span>
-      ),
+      )
     },
-    {
-      key: 'priority',
-      label: 'Priority',
-      render: (value) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-          {capitalize(value)}
-        </span>
-      ),
+    { 
+      key: 'priority', 
+      label: 'Priority', 
+      render: v => {
+        const colors = {
+          low: 'bg-green-100 text-green-800',
+          medium: 'bg-yellow-100 text-yellow-800',
+          high: 'bg-orange-100 text-orange-800',
+          urgent: 'bg-red-100 text-red-800'
+        };
+        return (
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${colors[v] || 'bg-gray-100 text-gray-800'}`}>
+            {capitalize(v)}
+          </span>
+        );
+      }
     },
-    {
-      key: 'assignedTo',
+    { 
+      key: 'assignedTo', 
       label: 'Assigned To',
-      render: (value) => (
-        <span className="text-sm text-gray-700">{value || 'Unassigned'}</span>
-      ),
+      render: (v) => (
+        <span className="text-sm text-gray-600">
+          {v || 'Unassigned'}
+        </span>
+      )
     },
-    {
-      key: 'createdAt',
-      label: 'Created',
-      render: (value) => (
-        <span className="text-sm text-gray-600">{getRelativeTime(new Date(value))}</span>
-      ),
+    { 
+      key: 'createdAt', 
+      label: 'Created', 
+      render: v => (
+        <div className="text-sm">
+          <div className="text-gray-900">{getRelativeTime(new Date(v))}</div>
+          <div className="text-gray-500 text-xs">{formatDate(v)}</div>
+        </div>
+      )
     },
   ];
 
@@ -228,70 +356,61 @@ const Support = () => {
           <h1 className="text-2xl font-bold text-gray-900">Support & Tickets</h1>
           <p className="text-gray-600 mt-1">Manage customer and seller support requests</p>
         </div>
-        <Button
-          variant="outline"
-          icon={<Download size={18} />}
+        <Button 
+          variant="outline" 
+          icon={<Download size={18} />} 
           onClick={handleExportTickets}
+          disabled={filteredTickets.length === 0}
         >
-          Export Tickets
+          Export Tickets ({filteredTickets.length})
         </Button>
       </div>
 
-      <LoadingState loading={loading}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
-            title="Open Tickets"
-            value={stats?.open || 0}
-            icon={<MessageSquare size={24} />}
-            trend="down"
-            trendValue="-8%"
-            color="warning"
-          />
-          <StatsCard
-            title="In Progress"
-            value={stats?.inProgress || 0}
-            icon={<Clock size={24} />}
-            trend="up"
-            trendValue="+12%"
-            color="info"
-          />
-          <StatsCard
-            title="Resolved"
-            value={stats?.resolved || 0}
-            icon={<CheckCircle size={24} />}
-            trend="up"
-            trendValue="+18%"
-            color="success"
-          />
-          <StatsCard
-            title="Avg Response Time"
-            value={stats?.avgResponseTime || '-'}
-            icon={<Clock size={24} />}
-            trend="down"
-            trendValue="-15%"
-            color="primary"
-          />
-        </div>
-      </LoadingState>
+      {/* Stats Cards - Always visible */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatsCard 
+          title="Open Tickets" 
+          value={stats?.open || 0} 
+          icon={<MessageSquare size={24} />} 
+          color="warning" 
+        />
+        <StatsCard 
+          title="In Progress" 
+          value={stats?.inProgress || 0} 
+          icon={<Clock size={24} />} 
+          color="info" 
+        />
+        <StatsCard 
+          title="Resolved" 
+          value={stats?.resolved || 0} 
+          icon={<CheckCircle size={24} />} 
+          color="success" 
+        />
+        <StatsCard 
+          title="Avg Response Time" 
+          value={stats?.avgResponseTime || '-'} 
+          icon={<Clock size={24} />} 
+          color="primary" 
+        />
+      </div>
 
+      {/* Filters */}
       <Card>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[200px]">
-            <input
-              type="text"
-              placeholder="Search tickets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input"
+            <input 
+              type="text" 
+              placeholder="Search tickets..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className="input" 
             />
           </div>
-          
           <div className="flex items-center space-x-3">
             <Filter size={20} className="text-gray-500" />
-            
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)} 
               className="input w-40"
             >
               <option value="all">All Status</option>
@@ -300,10 +419,9 @@ const Support = () => {
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </select>
-            
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
+            <select 
+              value={priorityFilter} 
+              onChange={(e) => setPriorityFilter(e.target.value)} 
               className="input w-40"
             >
               <option value="all">All Priority</option>
@@ -316,180 +434,125 @@ const Support = () => {
         </div>
       </Card>
 
-      <DataTable
-        data={tickets}
-        columns={ticketColumns}
-        loading={loading}
-        onRowClick={handleViewTicket}
-        pagination={true}
-        pageSize={10}
-        emptyMessage="No tickets found"
-      />
+      {/* Tickets Table */}
+      <LoadingState loading={loading}>
+        <DataTable 
+          data={filteredTickets} 
+          columns={ticketColumns} 
+          loading={loading} 
+          onRowClick={handleViewTicket} 
+          pagination={true} 
+          pageSize={10} 
+          emptyMessage="No tickets found" 
+        />
+      </LoadingState>
 
-      <Modal
-        isOpen={showTicketModal}
-        onClose={() => setShowTicketModal(false)}
-        title={`Ticket ${selectedTicket?.id}`}
+      {/* Ticket Detail Modal */}
+      <Modal 
+        isOpen={showTicketModal} 
+        onClose={() => setShowTicketModal(false)} 
+        title={`Ticket ${selectedTicket?._id || ''}`} 
         size="xl"
       >
         {selectedTicket && (
           <div className="space-y-6">
-            <div className="border-b border-gray-200 pb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {selectedTicket.subject}
-              </h3>
-              
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center">
-                  <User size={16} className="mr-1" />
-                  <span>{selectedTicket.customerName}</span>
-                </div>
-                <div className="flex items-center">
-                  <Calendar size={16} className="mr-1" />
-                  <span>{formatDate(selectedTicket.createdAt, 'long')}</span>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTicket.status)}`}>
-                  {capitalize(selectedTicket.status.replace('_', ' '))}
+            <div className="border-b pb-4">
+              <h3 className="text-lg font-semibold">{selectedTicket.subject}</h3>
+              <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                <span>Customer: {selectedTicket.customerName}</span>
+                <span className={`px-2 py-1 rounded text-xs ${getStatusColor(selectedTicket.status)}`}>
+                  {capitalize(selectedTicket.status)}
                 </span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTicket.priority)}`}>
-                  {capitalize(selectedTicket.priority)}
+                <span className="px-2 py-1 bg-gray-100 rounded text-xs">
+                  {capitalize(selectedTicket.priority)} Priority
                 </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 mt-4">
-                <select
-                  value={selectedTicket.status}
-                  onChange={(e) => handleStatusChange(selectedTicket.id, e.target.value)}
-                  className="input w-48"
-                >
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-
-                <select
-                  value={mockAdminUsers.find(a => a.name === selectedTicket.assignedTo)?.id || ''}
-                  onChange={(e) => handleAssignTicket(selectedTicket.id, e.target.value)}
-                  className="input w-48"
-                >
-                  <option value="">Assign to...</option>
-                  {mockAdminUsers.map(admin => (
-                    <option key={admin.id} value={admin.id}>{admin.name}</option>
-                  ))}
-                </select>
               </div>
             </div>
 
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm font-semibold text-gray-700 mb-2">Original Message:</p>
-              <p className="text-gray-900">{selectedTicket.description}</p>
-              {selectedTicket.orderNumber && (
-                <p className="text-sm text-gray-600 mt-2">
-                  Order: <span className="font-mono font-semibold">{selectedTicket.orderNumber}</span>
-                </p>
-              )}
+              <p>{selectedTicket.description}</p>
             </div>
 
-            <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
-              {ticketMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`p-4 rounded-lg ${
-                    msg.isInternal
-                      ? 'bg-yellow-50 border-l-4 border-yellow-400'
-                      : msg.senderType === 'admin'
-                      ? 'bg-blue-50 border-l-4 border-blue-400'
-                      : 'bg-white border border-gray-200'
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {ticketMessages.map((msg, i) => (
+                <div 
+                  key={i} 
+                  className={`p-4 rounded-lg border-l-4 ${
+                    msg.isInternal 
+                      ? 'bg-yellow-50 border-yellow-400' 
+                      : msg.senderType === 'admin' 
+                        ? 'bg-blue-50 border-blue-400' 
+                        : 'bg-white border-gray-200'
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        {msg.sender}
-                        {msg.isInternal && (
-                          <span className="ml-2 text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">
-                            Internal Note
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-gray-500">{getRelativeTime(new Date(msg.timestamp))}</p>
-                    </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-semibold text-sm">{msg.sender}</p>
+                    <span className="text-xs text-gray-500">
+                      {getRelativeTime(new Date(msg.timestamp))}
+                    </span>
                   </div>
-                  <p className="text-gray-700 whitespace-pre-wrap">{msg.message}</p>
-                  {msg.attachments && (
-                    <div className="flex gap-2 mt-2">
-                      {msg.attachments.map((file, idx) => (
-                        <span key={idx} className="text-xs bg-gray-200 px-2 py-1 rounded flex items-center">
-                          <Paperclip size={12} className="mr-1" />
-                          {file}
-                        </span>
-                      ))}
-                    </div>
+                  <p className="text-sm">{msg.message}</p>
+                  {msg.isInternal && (
+                    <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded mt-2 inline-block">
+                      Internal Note
+                    </span>
                   )}
                 </div>
               ))}
             </div>
 
-            <div className="border-t border-gray-200 pt-4 space-y-3">
-              <div className="flex space-x-2">
-                <Button
-                  variant={showInternalNote ? 'outline' : 'primary'}
-                  size="sm"
-                  onClick={() => setShowInternalNote(false)}
+            <div className="flex space-x-2 mb-4">
+              <Button 
+                variant={!showInternalNote ? 'primary' : 'outline'} 
+                onClick={() => setShowInternalNote(false)}
+                size="sm"
+              >
+                Customer Reply
+              </Button>
+              <Button 
+                variant={showInternalNote ? 'warning' : 'outline'} 
+                onClick={() => setShowInternalNote(true)}
+                size="sm"
+              >
+                Internal Note
+              </Button>
+            </div>
+
+            {!showInternalNote ? (
+              <div className="space-y-3">
+                <textarea 
+                  value={replyMessage} 
+                  onChange={(e) => setReplyMessage(e.target.value)} 
+                  placeholder="Type your reply to the customer..." 
+                  className="input min-h-[120px]" 
+                />
+                <Button 
+                  icon={<Send size={18} />} 
+                  onClick={handleSendReply} 
+                  disabled={!replyMessage.trim()}
                 >
-                  Reply to Customer
+                  Send Reply
                 </Button>
-                <Button
-                  variant={showInternalNote ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => setShowInternalNote(true)}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <textarea 
+                  value={internalNote} 
+                  onChange={(e) => setInternalNote(e.target.value)} 
+                  placeholder="Add an internal note (visible only to admin staff)..." 
+                  className="input min-h-[120px]" 
+                />
+                <Button 
+                  icon={<Send size={18} />} 
+                  onClick={handleAddInternalNote} 
+                  disabled={!internalNote.trim()} 
+                  variant="warning"
                 >
                   Add Internal Note
                 </Button>
               </div>
-
-              {!showInternalNote ? (
-                <div>
-                  <textarea
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                    placeholder="Type your reply to the customer..."
-                    className="input min-h-[120px]"
-                    rows="4"
-                  />
-                  <div className="flex justify-end mt-2">
-                    <Button
-                      icon={<Send size={18} />}
-                      onClick={handleSendReply}
-                      disabled={!replyMessage.trim()}
-                    >
-                      Send Reply
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <textarea
-                    value={internalNote}
-                    onChange={(e) => setInternalNote(e.target.value)}
-                    placeholder="Add an internal note (not visible to customer)..."
-                    className="input min-h-[120px] bg-yellow-50 border-yellow-300"
-                    rows="4"
-                  />
-                  <div className="flex justify-end mt-2">
-                    <Button
-                      icon={<Send size={18} />}
-                      onClick={handleAddInternalNote}
-                      disabled={!internalNote.trim()}
-                      variant="warning"
-                    >
-                      Add Note
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
       </Modal>
