@@ -1,8 +1,11 @@
 import axios from "axios";
 
-// Create axios instance using environment variable
+// Hardcoded production URL (ignores .env file)
+const PRODUCTION_BASE_URL = "https://markethub-api-gateway.onrender.com/tmf-api/";
+
+// Create axios instance with production URL
 export const axiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_BASE_URL, // Uses VITE_BASE_URL from .env
+    baseURL: PRODUCTION_BASE_URL,
     timeout: 30000, // 30 second timeout
     headers: {
         "Content-Type": "application/json",
@@ -21,7 +24,7 @@ axiosInstance.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         } else {
-            console.warn("No authentication token found - API calls may fail");
+            console.warn("⚠️ No authentication token found - API calls may fail");
         }
         
         return config;
@@ -39,20 +42,18 @@ axiosInstance.interceptors.response.use(
     (error) => {
         // Log errors for debugging
         if (error.response) {
-            console.error(`API Error [${error.response.status}]:`, error.response.data);
+            console.error(`❌ API Error [${error.response.status}]:`, error.response.data);
             
             // Handle specific error codes
             if (error.response.status === 401) {
                 console.error("❌ Authentication failed - Please log in");
-                // Optionally redirect to login
-                // window.location.href = '/login';
             } else if (error.response.status === 403) {
                 console.error("❌ Access forbidden - Insufficient permissions");
             } else if (error.response.status === 404) {
                 console.error("❌ Resource not found");
             }
         } else if (error.request) {
-            console.error("❌ No response from server - Check network connection");
+            console.error("❌ No response from server - Check network connection or backend status");
         } else {
             console.error("❌ Request error:", error.message);
         }
@@ -60,3 +61,6 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+// Log the base URL being used (for debugging)
+console.log("🔗 API Base URL:", PRODUCTION_BASE_URL);
