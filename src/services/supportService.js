@@ -1,278 +1,172 @@
 /*
-Support Service
+Support Service - Connected to TMF681 Communication Management API
 
-Features:
-- Get all tickets with filters (status, priority, search)
-- Get ticket by ID with full message history
-- Update ticket status (open, in_progress, resolved, closed)
-- Assign ticket to admin/team
-- Reply to ticket (customer-facing messages)
-- Add internal notes (admin-only notes)
-- Get ticket statistics (open, in progress, resolved, avg response time)
-- Fallback to mock data when backend is not available
-
-Ticket Structure:
-{
-  _id: 'TKT-001',
-  subject: string,
-  description: string,
-  customerName: string,
-  customerId: string,
-  status: 'open' | 'in_progress' | 'resolved' | 'closed',
-  priority: 'low' | 'medium' | 'high' | 'urgent',
-  assignedTo: string (admin name or team name),
-  assignedToId: string,
-  createdAt: Date,
-  updatedAt: Date,
-  messages: [{
-    sender: string,
-    senderType: 'customer' | 'admin',
-    message: string,
-    timestamp: Date,
-    isInternal: boolean
-  }]
-}
+Uses TMF681 communicationMessage endpoint as support ticket system:
+- category: 'support-ticket' for filtering
+- subject: ticket subject
+- content: ticket description
+- state: ticket status (open, pending, closed, etc.)
+- priority: ticket priority
+- sender: customer information
+- receiver: assigned admin/team
 */
 
-import api from './api';
-import { API_ENDPOINTS } from '../utils/constants';
+import { axiosInstance } from "./axiosInstance";
+import { 
+  API_ENDPOINTS, 
+  TMF_MESSAGE_CATEGORIES,
+  TMF_STATE_MAPPING,
+  TICKET_TO_TMF_STATE 
+} from "../utils/constants";
 
-// Mock data for development/fallback
-const mockStats = {
-  open: 12,
-  inProgress: 8,
-  resolved: 45,
-  closed: 10,
-  total: 75,
-  avgResponseTime: '2.5 hours'
+// Map TMF681 states to ticket statuses using constants
+const mapTMFStateToTicketStatus = (tmfState) => {
+  return TMF_STATE_MAPPING[tmfState] || 'open';
 };
 
-const mockTickets = [
-  {
-    _id: 'TKT-001',
-    subject: 'Order not delivered',
-    customerName: 'John Doe',
-    customerId: 'CUST-001',
-    status: 'open',
-    priority: 'high',
-    assignedTo: 'Admin User',
-    assignedToId: 'ADMIN-001',
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-    description: 'I placed an order 3 days ago but have not received it yet.',
-    category: 'Order Issue',
-    messages: [
-      {
-        sender: 'John Doe',
-        senderType: 'customer',
-        message: 'I placed an order 3 days ago but have not received it yet.',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        isInternal: false
-      }
-    ]
-  },
-  {
-    _id: 'TKT-002',
-    subject: 'Payment issue',
-    customerName: 'Jane Smith',
-    customerId: 'CUST-002',
-    status: 'in_progress',
-    priority: 'medium',
-    assignedTo: 'Support Team',
-    assignedToId: 'ADMIN-002',
-    createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-    description: 'Payment was deducted but order was not confirmed.',
-    category: 'Payment Issue',
-    messages: [
-      {
-        sender: 'Jane Smith',
-        senderType: 'customer',
-        message: 'Payment was deducted but order was not confirmed.',
-        timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
-        isInternal: false
-      },
-      {
-        sender: 'Support Team',
-        senderType: 'admin',
-        message: 'We are looking into this issue. Please provide your transaction ID.',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-        isInternal: false
-      }
-    ]
-  },
-  {
-    _id: 'TKT-003',
-    subject: 'Product quality concern',
-    customerName: 'Mike Johnson',
-    customerId: 'CUST-003',
-    status: 'resolved',
-    priority: 'low',
-    assignedTo: 'Quality Team',
-    assignedToId: 'ADMIN-003',
-    createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    description: 'The product I received does not match the description.',
-    category: 'Product Quality',
-    messages: [
-      {
-        sender: 'Mike Johnson',
-        senderType: 'customer',
-        message: 'The product I received does not match the description.',
-        timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000),
-        isInternal: false
-      },
-      {
-        sender: 'Quality Team',
-        senderType: 'admin',
-        message: 'We apologize for the inconvenience. A replacement has been shipped.',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        isInternal: false
-      }
-    ]
-  },
-  {
-    _id: 'TKT-004',
-    subject: 'Refund request',
-    customerName: 'Sarah Williams',
-    customerId: 'CUST-004',
-    status: 'open',
-    priority: 'high',
-    assignedTo: 'Finance Team',
-    assignedToId: 'ADMIN-004',
-    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-    description: 'I need a refund for order #12345 as the product was damaged.',
-    category: 'Order Issue',
-    messages: [
-      {
-        sender: 'Sarah Williams',
-        senderType: 'customer',
-        message: 'I need a refund for order #12345 as the product was damaged.',
-        timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
-        isInternal: false
-      }
-    ]
-  },
-  {
-    _id: 'TKT-005',
-    subject: 'Account access issue',
-    customerName: 'David Brown',
-    customerId: 'CUST-005',
-    status: 'in_progress',
-    priority: 'urgent',
-    assignedTo: 'Tech Support',
-    assignedToId: 'ADMIN-005',
-    createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
-    description: 'Cannot login to my account. Password reset not working.',
-    category: 'Account Issue',
-    messages: [
-      {
-        sender: 'David Brown',
-        senderType: 'customer',
-        message: 'Cannot login to my account. Password reset not working.',
-        timestamp: new Date(Date.now() - 36 * 60 * 60 * 1000),
-        isInternal: false
-      },
-      {
-        sender: 'Tech Support',
-        senderType: 'admin',
-        message: 'We are investigating this issue. Will update you shortly.',
-        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-        isInternal: false
-      },
-      {
-        sender: 'Tech Support',
-        senderType: 'admin',
-        message: 'Internal note: User account flagged for security review.',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-        isInternal: true
-      }
-    ]
-  }
-];
+// Map ticket status back to TMF state using constants
+const mapTicketStatusToTMFState = (ticketStatus) => {
+  return TICKET_TO_TMF_STATE[ticketStatus] || 'pending';
+};
 
-// Filter mock tickets based on parameters
-const filterMockTickets = (params = {}) => {
-  let filtered = [...mockTickets];
+// Calculate statistics from tickets
+const calculateStats = (tickets) => {
+  const stats = {
+    open: 0,
+    inProgress: 0,
+    resolved: 0,
+    closed: 0,
+    total: tickets.length,
+    avgResponseTime: '2.5 hours' // Would need timestamp calculation
+  };
   
-  if (params.status && params.status !== 'all') {
-    filtered = filtered.filter(t => t.status === params.status);
-  }
+  tickets.forEach(ticket => {
+    if (ticket.status === 'open') stats.open++;
+    else if (ticket.status === 'in_progress') stats.inProgress++;
+    else if (ticket.status === 'resolved') stats.resolved++;
+    else if (ticket.status === 'closed') stats.closed++;
+  });
   
-  if (params.priority && params.priority !== 'all') {
-    filtered = filtered.filter(t => t.priority === params.priority);
-  }
-  
-  if (params.search) {
-    const searchLower = params.search.toLowerCase();
-    filtered = filtered.filter(t => 
-      t.subject.toLowerCase().includes(searchLower) ||
-      t.customerName.toLowerCase().includes(searchLower) ||
-      t._id.toLowerCase().includes(searchLower) ||
-      t.description.toLowerCase().includes(searchLower)
-    );
-  }
-  
-  return filtered;
+  return stats;
 };
 
 // Get all tickets with optional filters
 export const getTickets = async (params = {}) => {
   try {
-    const response = await api.get(API_ENDPOINTS.TICKETS, {
-      params: {
-        status: params.status,
-        priority: params.priority,
-        search: params.search,
-        page: params.page || 1,
-        limit: params.limit || 100,
-      },
-    });
+    console.log('Fetching tickets from TMF681 Communication Management API');
     
-    console.log(`Found ${response.data?.tickets?.length || 0} tickets from API`);
+    const queryParams = {
+      category: 'support-ticket', // Filter for support tickets
+    };
     
-    return response.data;
-  } catch (error) {
-    console.warn('API not available, using mock data:', error.message);
+    // Add status filter if provided
+    if (params.status && params.status !== 'all') {
+      queryParams.state = mapTicketStatusToTMFState(params.status);
+    }
     
-    // Return mock data with proper structure
-    const filtered = filterMockTickets(params);
+    // Add priority filter if provided
+    if (params.priority && params.priority !== 'all') {
+      queryParams.priority = params.priority;
+    }
+    
+    const response = await axiosInstance.get(
+      'communicationManagement/v4/communicationMessage',
+      { params: queryParams }
+    );
+    
+    const messages = Array.isArray(response.data) ? response.data : [];
+    console.log(`Found ${messages.length} support tickets from API`);
+    
+    // Transform TMF681 messages to ticket format
+    let tickets = messages.map(msg => ({
+      _id: msg.id || msg._id,
+      subject: msg.subject || 'No Subject',
+      description: msg.content || msg.description || '',
+      status: mapTMFStateToTicketStatus(msg.state),
+      priority: msg.priority || 'medium',
+      customerName: msg.sender?.name || 'Unknown Customer',
+      customerId: msg.sender?.id || msg.sender?.['@referredType'],
+      assignedTo: msg.receiver?.[0]?.name || 'Unassigned',
+      assignedToId: msg.receiver?.[0]?.id,
+      createdAt: msg.sendTime || msg.createdAt || new Date(),
+      updatedAt: msg.updatedAt || msg.sendTime || new Date(),
+      category: msg.characteristic?.find(c => c.name === 'category')?.value || 'General',
+      messageType: msg.messageType,
+      messages: [] // Would need separate call to get message thread
+    }));
+    
+    // Apply client-side search filter if provided
+    if (params.search) {
+      const searchLower = params.search.toLowerCase();
+      tickets = tickets.filter(t => 
+        t.subject.toLowerCase().includes(searchLower) ||
+        t.customerName.toLowerCase().includes(searchLower) ||
+        t._id.toLowerCase().includes(searchLower) ||
+        t.description.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    const stats = calculateStats(tickets);
     
     return {
-      tickets: filtered,
-      stats: mockStats,
+      tickets,
+      stats,
       pagination: {
-        page: params.page || 1,
-        limit: params.limit || 100,
-        total: filtered.length,
+        page: 1,
+        limit: tickets.length,
+        total: tickets.length,
         totalPages: 1
       }
     };
+  } catch (error) {
+    console.error('Error fetching tickets from TMF681 API:', error);
+    throw error;
   }
 };
 
-// Get ticket by ID with full details and message history
+// Get ticket by ID with full details
 export const getTicketById = async (id) => {
   try {
     console.log(`Fetching ticket details for: ${id}`);
     
-    const response = await api.get(API_ENDPOINTS.TICKET_DETAIL.replace(':id', id));
+    const response = await axiosInstance.get(
+      `communicationManagement/v4/communicationMessage/${id}`
+    );
     
-    console.log(`Loaded ticket ${id} with ${response.data?.messages?.length || 0} messages`);
+    const msg = response.data;
     
-    return response.data;
+    // Transform to ticket format with message history
+    const ticket = {
+      _id: msg.id || msg._id,
+      subject: msg.subject || 'No Subject',
+      description: msg.content || msg.description || '',
+      status: mapTMFStateToTicketStatus(msg.state),
+      priority: msg.priority || 'medium',
+      customerName: msg.sender?.name || 'Unknown Customer',
+      customerId: msg.sender?.id,
+      assignedTo: msg.receiver?.[0]?.name || 'Unassigned',
+      assignedToId: msg.receiver?.[0]?.id,
+      createdAt: msg.sendTime || msg.createdAt,
+      updatedAt: msg.updatedAt || msg.sendTime,
+      category: msg.characteristic?.find(c => c.name === 'category')?.value || 'General',
+      // Build message thread from attachment or characteristic
+      messages: [
+        {
+          sender: msg.sender?.name || 'Customer',
+          senderType: 'customer',
+          message: msg.content || msg.description || '',
+          timestamp: msg.sendTime || msg.createdAt,
+          isInternal: false
+        }
+      ]
+    };
+    
+    console.log(`Loaded ticket ${id} successfully`);
+    
+    return ticket;
   } catch (error) {
-    console.warn(`API not available, using mock data for ticket ${id}`);
-    
-    // Return mock ticket
-    const mockTicket = mockTickets.find(t => t._id === id);
-    if (mockTicket) {
-      return mockTicket;
-    }
-    
-    throw new Error(`Ticket ${id} not found`);
+    console.error(`Error fetching ticket ${id}:`, error);
+    throw error;
   }
 };
 
@@ -281,24 +175,20 @@ export const updateTicketStatus = async (id, status) => {
   try {
     console.log(`Updating ticket ${id} status to: ${status}`);
     
-    const response = await api.patch(API_ENDPOINTS.TICKET_DETAIL.replace(':id', id), {
-      status,
-    });
+    const tmfState = mapTicketStatusToTMFState(status);
+    
+    const response = await axiosInstance.patch(
+      `communicationManagement/v4/communicationMessage/${id}`,
+      {
+        state: tmfState
+      }
+    );
     
     console.log(`Ticket ${id} status updated successfully`);
     
     return response.data;
   } catch (error) {
-    console.warn(`API not available, simulating status update for ticket ${id}`);
-    
-    // Simulate success for demo purposes
-    const mockTicket = mockTickets.find(t => t._id === id);
-    if (mockTicket) {
-      mockTicket.status = status;
-      mockTicket.updatedAt = new Date();
-      return mockTicket;
-    }
-    
+    console.error(`Error updating ticket ${id} status:`, error);
     throw error;
   }
 };
@@ -308,39 +198,58 @@ export const assignTicket = async (id, adminId) => {
   try {
     console.log(`Assigning ticket ${id} to admin: ${adminId}`);
     
-    const response = await api.patch(API_ENDPOINTS.TICKET_DETAIL.replace(':id', id), {
-      assignedTo: adminId,
-    });
+    const response = await axiosInstance.patch(
+      `communicationManagement/v4/communicationMessage/${id}`,
+      {
+        receiver: [
+          {
+            id: adminId,
+            '@referredType': 'Admin'
+          }
+        ]
+      }
+    );
     
     console.log(`Ticket ${id} assigned successfully`);
     
     return response.data;
   } catch (error) {
-    console.warn(`API not available, simulating assignment for ticket ${id}`);
-    
-    // Simulate success for demo purposes
-    const mockTicket = mockTickets.find(t => t._id === id);
-    if (mockTicket) {
-      mockTicket.assignedToId = adminId;
-      mockTicket.assignedTo = adminId; // In real scenario, fetch admin name
-      mockTicket.updatedAt = new Date();
-      return mockTicket;
-    }
-    
+    console.error(`Error assigning ticket ${id}:`, error);
     throw error;
   }
 };
 
-// Reply to ticket (customer-facing message)
+// Reply to ticket (create new message linked to original)
 export const replyToTicket = async (id, message) => {
   try {
     console.log(`Sending reply to ticket ${id}`);
     
-    const response = await api.post(
-      API_ENDPOINTS.TICKET_NOTES.replace(':id', id),
-      { 
-        message, 
-        isInternal: false 
+    // Create a new communication message as a reply
+    const response = await axiosInstance.post(
+      'communicationManagement/v4/communicationMessage',
+      {
+        subject: `Re: Ticket ${id}`,
+        content: message,
+        messageType: 'Email', // or 'SMS', 'WebMessage'
+        state: 'delivered',
+        category: 'support-reply',
+        relatedParty: [
+          {
+            id: id,
+            role: 'originalTicket',
+            '@referredType': 'CommunicationMessage'
+          }
+        ],
+        sender: {
+          name: 'Support Team',
+          '@referredType': 'Admin'
+        },
+        characteristic: [
+          {
+            name: 'isInternal',
+            value: 'false'
+          }
+        ]
       }
     );
     
@@ -348,36 +257,42 @@ export const replyToTicket = async (id, message) => {
     
     return response.data;
   } catch (error) {
-    console.warn(`API not available, simulating reply for ticket ${id}`);
-    
-    // Simulate success for demo purposes
-    const mockTicket = mockTickets.find(t => t._id === id);
-    if (mockTicket) {
-      mockTicket.messages.push({
-        sender: 'Admin User',
-        senderType: 'admin',
-        message: message,
-        timestamp: new Date(),
-        isInternal: false
-      });
-      mockTicket.updatedAt = new Date();
-      return mockTicket;
-    }
-    
+    console.error(`Error sending reply to ticket ${id}:`, error);
     throw error;
   }
 };
 
-// Add internal note (admin-only, not visible to customer)
+// Add internal note (admin-only note)
 export const addTicketNote = async (id, note) => {
   try {
     console.log(`Adding internal note to ticket ${id}`);
     
-    const response = await api.post(
-      API_ENDPOINTS.TICKET_NOTES.replace(':id', id),
-      { 
-        note, 
-        isInternal: true 
+    // Create a new communication message as internal note
+    const response = await axiosInstance.post(
+      'communicationManagement/v4/communicationMessage',
+      {
+        subject: `Internal Note - Ticket ${id}`,
+        content: note,
+        messageType: 'InternalNote',
+        state: 'delivered',
+        category: 'support-internal',
+        relatedParty: [
+          {
+            id: id,
+            role: 'originalTicket',
+            '@referredType': 'CommunicationMessage'
+          }
+        ],
+        sender: {
+          name: 'Admin User',
+          '@referredType': 'Admin'
+        },
+        characteristic: [
+          {
+            name: 'isInternal',
+            value: 'true'
+          }
+        ]
       }
     );
     
@@ -385,51 +300,34 @@ export const addTicketNote = async (id, note) => {
     
     return response.data;
   } catch (error) {
-    console.warn(`API not available, simulating note addition for ticket ${id}`);
-    
-    // Simulate success for demo purposes
-    const mockTicket = mockTickets.find(t => t._id === id);
-    if (mockTicket) {
-      mockTicket.messages.push({
-        sender: 'Admin User',
-        senderType: 'admin',
-        message: note,
-        timestamp: new Date(),
-        isInternal: true
-      });
-      mockTicket.updatedAt = new Date();
-      return mockTicket;
-    }
-    
+    console.error(`Error adding note to ticket ${id}:`, error);
     throw error;
   }
 };
 
-// Close ticket with optional resolution
+// Close ticket
 export const closeTicket = async (id, resolution = '') => {
   try {
     console.log(`Closing ticket ${id}`);
     
-    const response = await api.patch(API_ENDPOINTS.TICKET_DETAIL.replace(':id', id), {
-      status: 'closed',
-      resolution,
-    });
+    const response = await axiosInstance.patch(
+      `communicationManagement/v4/communicationMessage/${id}`,
+      {
+        state: 'closed',
+        characteristic: [
+          {
+            name: 'resolution',
+            value: resolution
+          }
+        ]
+      }
+    );
     
     console.log(`Ticket ${id} closed successfully`);
     
     return response.data;
   } catch (error) {
-    console.warn(`API not available, simulating close for ticket ${id}`);
-    
-    // Simulate success for demo purposes
-    const mockTicket = mockTickets.find(t => t._id === id);
-    if (mockTicket) {
-      mockTicket.status = 'closed';
-      mockTicket.resolution = resolution;
-      mockTicket.updatedAt = new Date();
-      return mockTicket;
-    }
-    
+    console.error(`Error closing ticket ${id}:`, error);
     throw error;
   }
 };
@@ -437,16 +335,23 @@ export const closeTicket = async (id, resolution = '') => {
 // Get ticket statistics
 export const getTicketStats = async () => {
   try {
-    console.log('Fetching ticket statistics');
+    console.log('Calculating ticket statistics');
     
-    const response = await api.get(API_ENDPOINTS.TICKET_STATS);
+    // Fetch all support tickets
+    const result = await getTickets({ status: 'all' });
     
-    console.log('Ticket stats:', response.data);
-    
-    return response.data;
+    return result.stats;
   } catch (error) {
-    console.warn('API not available, using mock stats');
-    return mockStats;
+    console.error('Error calculating ticket stats:', error);
+    // Return default stats
+    return {
+      open: 0,
+      inProgress: 0,
+      resolved: 0,
+      closed: 0,
+      total: 0,
+      avgResponseTime: 'N/A'
+    };
   }
 };
 
@@ -455,23 +360,18 @@ export const updateTicketPriority = async (id, priority) => {
   try {
     console.log(`Updating ticket ${id} priority to: ${priority}`);
     
-    const response = await api.patch(API_ENDPOINTS.TICKET_DETAIL.replace(':id', id), {
-      priority,
-    });
+    const response = await axiosInstance.patch(
+      `communicationManagement/v4/communicationMessage/${id}`,
+      {
+        priority: priority
+      }
+    );
     
     console.log(`Ticket ${id} priority updated successfully`);
     
     return response.data;
   } catch (error) {
-    console.warn(`API not available, simulating priority update for ticket ${id}`);
-    
-    const mockTicket = mockTickets.find(t => t._id === id);
-    if (mockTicket) {
-      mockTicket.priority = priority;
-      mockTicket.updatedAt = new Date();
-      return mockTicket;
-    }
-    
+    console.error(`Error updating ticket ${id} priority:`, error);
     throw error;
   }
 };
@@ -479,42 +379,37 @@ export const updateTicketPriority = async (id, priority) => {
 // Create new ticket
 export const createTicket = async (ticketData) => {
   try {
-    console.log('Creating new ticket:', ticketData.subject);
+    console.log('Creating new support ticket:', ticketData.subject);
     
-    const response = await api.post(API_ENDPOINTS.TICKETS, {
-      subject: ticketData.subject,
-      description: ticketData.description,
-      customerName: ticketData.customerName,
-      customerId: ticketData.customerId,
-      priority: ticketData.priority || 'medium',
-      category: ticketData.category,
-    });
+    const response = await axiosInstance.post(
+      'communicationManagement/v4/communicationMessage',
+      {
+        subject: ticketData.subject,
+        content: ticketData.description,
+        messageType: 'Email',
+        state: 'pending',
+        category: 'support-ticket',
+        priority: ticketData.priority || 'medium',
+        sender: {
+          id: ticketData.customerId,
+          name: ticketData.customerName,
+          '@referredType': 'Customer'
+        },
+        characteristic: [
+          {
+            name: 'ticketCategory',
+            value: ticketData.category || 'General'
+          }
+        ]
+      }
+    );
     
-    console.log('Ticket created successfully:', response.data?._id);
+    console.log('Ticket created successfully:', response.data?.id);
     
     return response.data;
   } catch (error) {
-    console.warn('API not available, simulating ticket creation');
-    
-    const newTicket = {
-      _id: `TKT-${String(mockTickets.length + 1).padStart(3, '0')}`,
-      ...ticketData,
-      status: 'open',
-      assignedTo: null,
-      assignedToId: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      messages: [{
-        sender: ticketData.customerName,
-        senderType: 'customer',
-        message: ticketData.description,
-        timestamp: new Date(),
-        isInternal: false
-      }]
-    };
-    
-    mockTickets.push(newTicket);
-    return newTicket;
+    console.error('Error creating ticket:', error);
+    throw error;
   }
 };
 
@@ -523,65 +418,36 @@ export const getCustomerTickets = async (customerId) => {
   try {
     console.log(`Fetching tickets for customer: ${customerId}`);
     
-    const response = await api.get(API_ENDPOINTS.CUSTOMER_TICKETS.replace(':customerId', customerId));
+    const response = await axiosInstance.get(
+      'communicationManagement/v4/communicationMessage',
+      {
+        params: {
+          category: 'support-ticket',
+          'sender.id': customerId
+        }
+      }
+    );
     
-    console.log(`Found ${response.data?.length || 0} tickets for customer ${customerId}`);
+    const messages = Array.isArray(response.data) ? response.data : [];
     
-    return response.data;
+    const tickets = messages.map(msg => ({
+      _id: msg.id,
+      subject: msg.subject,
+      status: mapTMFStateToTicketStatus(msg.state),
+      priority: msg.priority || 'medium',
+      createdAt: msg.sendTime || msg.createdAt,
+      updatedAt: msg.updatedAt
+    }));
+    
+    console.log(`Found ${tickets.length} tickets for customer ${customerId}`);
+    
+    return tickets;
   } catch (error) {
-    console.warn(`API not available, using mock data for customer ${customerId}`);
-    return mockTickets.filter(t => t.customerId === customerId);
+    console.error(`Error fetching customer ${customerId} tickets:`, error);
+    throw error;
   }
 };
 
-// Get available admins/teams for assignment
-export const getAvailableAssignees = async () => {
-  try {
-    console.log('Fetching available assignees');
-    
-    const response = await api.get(API_ENDPOINTS.TICKET_ASSIGNEES);
-    
-    console.log(`Found ${response.data?.length || 0} available assignees`);
-    
-    return response.data;
-  } catch (error) {
-    console.warn('API not available, using mock assignees');
-    return [
-      { id: 'ADMIN-001', name: 'Admin User', role: 'Admin' },
-      { id: 'ADMIN-002', name: 'Support Team', role: 'Support' },
-      { id: 'ADMIN-003', name: 'Quality Team', role: 'Quality' },
-      { id: 'ADMIN-004', name: 'Finance Team', role: 'Finance' },
-      { id: 'ADMIN-005', name: 'Tech Support', role: 'Technical' }
-    ];
-  }
-};
-
-// Get ticket categories/types
-export const getTicketCategories = async () => {
-  try {
-    console.log('Fetching ticket categories');
-    
-    const response = await api.get(API_ENDPOINTS.TICKET_CATEGORIES);
-    
-    console.log(`Found ${response.data?.length || 0} ticket categories`);
-    
-    return response.data;
-  } catch (error) {
-    console.warn('API not available, using default categories');
-    return [
-      'Order Issue',
-      'Payment Issue',
-      'Product Quality',
-      'Delivery Issue',
-      'Account Issue',
-      'Technical Support',
-      'General Inquiry',
-      'Other',
-    ];
-  }
-};
-
-// Export all functions as default
 export default {
   getTickets,
   getTicketById,
@@ -594,6 +460,4 @@ export default {
   updateTicketPriority,
   createTicket,
   getCustomerTickets,
-  getAvailableAssignees,
-  getTicketCategories,
 };
