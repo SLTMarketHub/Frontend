@@ -6,6 +6,8 @@ import {
   Users,
   Download,
   Calendar,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   LineChart,
@@ -22,6 +24,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import * as XLSX from "xlsx";
 import Card, { StatsCard } from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import DataTable from "../../components/common/DataTable";
@@ -63,15 +66,18 @@ import {
   mockTopCategories,
   mockRevenueByCategory,
 } from "../../utils/mockData";
+import useToast from "../../hooks/useToast";
 
 const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [overviewStats, setOverviewStats] = useState(null);
   const [salesData, setSalesData] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [topCategories, setTopCategories] = useState([]);
   const [revenueByCategory, setRevenueByCategory] = useState([]);
+  const { success, error } = useToast();
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -80,7 +86,6 @@ const Analytics = () => {
   const fetchAnalyticsData = async () => {
     setLoading(true);
     try {
-      // Use the same endpoints as Dashboard for stats cards
       const [revenueData, ordersData, customersData, sellersData, productsData, analyticsData] = await Promise.all([
         getTotalRevenue(),
         getTotalOrders(),
@@ -97,16 +102,13 @@ const Analytics = () => {
       console.log('Sellers:', sellersData);
       console.log('Products:', productsData);
       
-      // Create overview stats using dashboard endpoints (same as Dashboard.jsx)
       const dashboardOverviewStats = {
         totalRevenue: revenueData?.totalRevenue || 0,
         totalOrders: ordersData?.totalOrders || 0,
         totalCustomers: customersData?.totalCustomers || 0,
         activeSellers: sellersData?.activeSellers || 0,
         totalProducts: productsData?.totalProducts || 0,
-        // Calculate average order value
         averageOrderValue: ordersData?.totalOrders > 0 ? (revenueData?.totalRevenue || 0) / ordersData.totalOrders : 0,
-        // Mock growth rates for now (same as analytics service)
         growthRate: revenueData?.totalRevenue > 0 ? Math.random() * 20 + 5 : 0,
         ordersGrowthRate: ordersData?.totalOrders > 0 ? Math.random() * 15 + 8 : 0,
         avgOrderValueGrowthRate: ordersData?.totalOrders > 0 ? Math.random() * 10 + 3 : 0,
@@ -122,7 +124,6 @@ const Analytics = () => {
       setRevenueByCategory(analyticsData.revenueByCategory.length > 0 ? analyticsData.revenueByCategory : mockRevenueByCategory);
     } catch (error) {
       console.error('Error fetching analytics:', error);
-      // Fallback to mock data
       setOverviewStats(mockOverviewStats);
       setSalesData(mockSalesChartData);
       setTopProducts(mockTopProducts);
@@ -161,16 +162,98 @@ const Analytics = () => {
     });
   };
 
-  const handleExportSalesReport = () => {
-    const reportData = {
-      totalRevenue: overviewStats?.totalRevenue,
-      totalOrders: overviewStats?.totalOrders,
-      avgOrderValue: overviewStats?.averageOrderValue,
-      growthRate: overviewStats?.growthRate,
-      topProducts: topProducts.slice(0, 5),
-    };
+  // Export as Excel
+  const handleExportExcel = () => {
+    try {
+      const excelData = [
+        ['SLT MARKETHUB - SALES REPORT'],
+        ['Period:', selectedPeriod.toUpperCase()],
+        ['Generated:', new Date().toLocaleString()],
+        [''],
+        
+        ['OVERVIEW STATISTICS'],
+        ['Metric', 'Value', 'Growth'],
+        ['Total Revenue', formatCurrency(overviewStats?.totalRevenue || 0), `${(overviewStats?.growthRate || 0).toFixed(1)}%`],
+        ['Total Orders', formatNumber(overviewStats?.totalOrders || 0), `${(overviewStats?.ordersGrowthRate || 0).toFixed(1)}%`],
+        ['Average Order Value', formatCurrency(overviewStats?.averageOrderValue || 0), `${(overviewStats?.avgOrderValueGrowthRate || 0).toFixed(1)}%`],
+        ['Total Customers', formatNumber(overviewStats?.totalCustomers || 0), `${(overviewStats?.customersGrowthRate || 0).toFixed(1)}%`],
+        [''],
+        
+        ['TOP SELLING PRODUCTS (Top 10)'],
+        ['Rank', 'Product Name', 'Category', 'Sales Qty', 'Revenue (LKR)', 'Stock'],
+        ...topProducts.slice(0, 10).map((product, index) => [
+          index + 1,
+          product.name,
+          product.category,
+          product.sales,
+          product.revenue || 0,
+          product.stock,
+        ]),
+        [''],
+        
+        ['SALES TREND'],
+        ['Date', 'Revenue (LKR)', 'Orders'],
+        ...salesData.map(item => [
+          item.date,
+          item.revenue || 0,
+          item.orders || 0,
+        ]),
+        [''],
+        
+        ['TOP SELLING CATEGORIES'],
+        ['Rank', 'Category', 'Sales Qty', 'Revenue (LKR)'],
+        ...topCategories.slice(0, 8).map((cat, index) => [
+          index + 1,
+          cat.name,
+          cat.sales,
+          cat.revenue || 0,
+        ]),
+      ];
 
-    exportSalesReportPDF(reportData, selectedPeriod);
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(excelData);
+      
+      ws['!cols'] = [
+        { wch: 8 },
+        { wch: 30 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 10 },
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
+
+      const filename = `markethub_sales_report_${selectedPeriod}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+      
+      success(`Excel report exported: ${filename}`);
+      setShowExportMenu(false);
+    } catch (err) {
+      console.error('Error exporting Excel:', err);
+      error('Failed to export Excel report');
+    }
+  };
+
+  // Export as PDF (Sales Report)
+  const handleExportSalesReportPDF = () => {
+    try {
+      const reportData = {
+        totalRevenue: overviewStats?.totalRevenue,
+        totalOrders: overviewStats?.totalOrders,
+        avgOrderValue: overviewStats?.averageOrderValue,
+        growthRate: overviewStats?.growthRate,
+        topProducts: topProducts.slice(0, 5),
+      };
+
+      exportSalesReportPDF(reportData, selectedPeriod);
+      success('PDF report exported successfully!');
+      setShowExportMenu(false);
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      error('Failed to export PDF report');
+    }
   };
 
   const productColumns = [
@@ -246,12 +329,49 @@ const Analytics = () => {
             ))}
           </select>
 
-          <Button
-            variant="outline"
-            icon={<Download size={18} />}
-            onClick={handleExportSalesReport}>
-            Export Report
-          </Button>
+          {/* Export Dropdown Menu */}
+          <div className="relative">
+            <Button
+              variant="outline"
+              icon={<Download size={18} />}
+              onClick={() => setShowExportMenu(!showExportMenu)}>
+              Export Report
+            </Button>
+            
+            {showExportMenu && (
+              <>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <button
+                    onClick={handleExportExcel}
+                    className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 rounded-t-lg transition-colors">
+                    <FileSpreadsheet size={18} className="text-green-600" />
+                    <div>
+                      <p className="font-medium text-sm">Export as Excel</p>
+                      <p className="text-xs text-gray-500">.xlsx file</p>
+                    </div>
+                  </button>
+                  
+                  <div className="border-t border-gray-100"></div>
+                  
+                  <button
+                    onClick={handleExportSalesReportPDF}
+                    className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 rounded-b-lg transition-colors">
+                    <FileText size={18} className="text-red-600" />
+                    <div>
+                      <p className="font-medium text-sm">Export as PDF</p>
+                      <p className="text-xs text-gray-500">.pdf file</p>
+                    </div>
+                  </button>
+                </div>
+                
+                {/* Click outside to close menu */}
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowExportMenu(false)}
+                ></div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
