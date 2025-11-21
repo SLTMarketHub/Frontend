@@ -1,8 +1,68 @@
-import { axiosInstance } from './axiosInstance'; // ✅ FIXED - was using 'api'
+import { axiosInstance } from './axiosInstance';
 import { API_ENDPOINTS } from '../utils/constants';
+import { BANNER_PLACEHOLDER } from '../utils/imageUtils';
 
-// Mock data for fallback when backend endpoints don't exist
-const mockCommissionRates = {
+// Helper to get setting by type
+const getSetting = async (settingType) => {
+  try {
+    console.log(`Fetching ${settingType} settings from backend...`);
+    const response = await axiosInstance.get('communicationManagement/v4/communicationMessage', {
+      params: {
+        category: 'platform-config',
+        subject: settingType,
+        limit: 1,
+        sort: '-sendTime' // Get latest
+      }
+    });
+    
+    if (response.data && response.data.length > 0) {
+      const content = response.data[0].content;
+      return JSON.parse(content);
+    }
+    return null;
+  } catch (error) {
+    console.warn(`Failed to fetch ${settingType} settings:`, error);
+    return null;
+  }
+};
+
+// Helper to save setting
+const saveSetting = async (settingType, data) => {
+  try {
+    console.log(`Saving ${settingType} settings to backend...`);
+    // First check if one exists to update, or just create new one (log style)
+    // For settings, we usually want the latest state. 
+    // We'll create a new message with the new state.
+    
+    const response = await axiosInstance.post('communicationManagement/v4/communicationMessage', {
+      subject: settingType,
+      content: JSON.stringify(data),
+      messageType: 'Configuration',
+      state: 'active',
+      category: 'platform-config',
+      sendTime: new Date().toISOString(),
+      sender: {
+        name: 'Admin System',
+        '@referredType': 'System'
+      },
+      characteristic: [
+        {
+          name: 'settingType',
+          value: settingType
+        }
+      ]
+    });
+    
+    console.log(`✅ ${settingType} settings saved successfully`);
+    return data;
+  } catch (error) {
+    console.error(`Error saving ${settingType} settings:`, error);
+    throw error;
+  }
+};
+
+// Default Mock Data (Fallback)
+const defaultCommissionRates = {
   defaultRate: 5.0,
   categoryRates: [
     { category: 'Electronics', rate: 3.0 },
@@ -14,7 +74,7 @@ const mockCommissionRates = {
   paymentCycle: 'monthly',
 };
 
-const mockShippingRules = {
+const defaultShippingRules = {
   freeShippingThreshold: 5000,
   standardShippingFee: 300,
   expressShippingFee: 600,
@@ -25,234 +85,105 @@ const mockShippingRules = {
   ],
 };
 
-const mockTaxRules = {
+const defaultTaxRules = {
   vatEnabled: true,
   vatRate: 12.0,
   includeInPrice: false,
   invoiceFooterText: 'Tax Invoice - VAT Reg No: 123456789V',
 };
 
-const mockBanners = [
+const defaultBanners = [
   {
     id: 1,
     title: 'Summer Sale',
     description: 'Get up to 50% off on summer collection',
-    imageUrl: 'https://via.placeholder.com/800x400',
-    linkUrl: '/collections/summer',
+    imageUrl: BANNER_PLACEHOLDER,
     position: 'homepage-hero',
     priority: 1,
-    status: 'active',
-    startDate: '2024-06-01',
-    endDate: '2024-08-31',
-  },
-  {
-    id: 2,
-    title: 'New Arrivals',
-    description: 'Check out the latest products',
-    imageUrl: 'https://via.placeholder.com/800x400',
-    linkUrl: '/collections/new',
-    position: 'homepage-secondary',
-    priority: 2,
     status: 'active',
   },
 ];
 
-const mockEmailTemplates = [
+const defaultEmailTemplates = [
   {
     id: 1,
     name: 'Order Confirmation',
     type: 'order',
     subject: 'Your Order #{orderNumber} is Confirmed',
-    htmlBody: '<h1>Thank you for your order!</h1><p>Order #{orderNumber} for {customerName}</p>',
-    textBody: 'Thank you for your order! Order #{orderNumber} for {customerName}',
     variables: ['{customerName}', '{orderNumber}', '{orderTotal}'],
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'Shipping Notification',
-    type: 'shipping',
-    subject: 'Your Order #{orderNumber} Has Been Shipped',
-    htmlBody: '<h1>Your order is on the way!</h1><p>Tracking: {trackingNumber}</p>',
-    textBody: 'Your order is on the way! Tracking: {trackingNumber}',
-    variables: ['{customerName}', '{orderNumber}', '{trackingNumber}'],
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'Welcome Email',
-    type: 'customer',
-    subject: 'Welcome to SLT Markethub, {customerName}!',
-    htmlBody: '<h1>Welcome!</h1><p>Thank you for joining us.</p>',
-    textBody: 'Welcome! Thank you for joining us.',
-    variables: ['{customerName}', '{email}'],
     isActive: true,
   },
 ];
 
 // Commission Rates
 export const getCommissionRates = async () => {
-  try {
-    console.log('Fetching commission rates from backend...');
-    const response = await axiosInstance.get(API_ENDPOINTS.COMMISSION_RATES);
-    console.log('✅ Commission rates loaded from backend');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available for commission rates, using mock data');
-    // Return mock data as fallback
-    return mockCommissionRates;
-  }
+  const data = await getSetting('commission-rates');
+  return data || defaultCommissionRates;
 };
 
 export const updateCommissionRates = async (data) => {
-  try {
-    console.log('Updating commission rates...');
-    const response = await axiosInstance.put(API_ENDPOINTS.COMMISSION_RATES, data);
-    console.log('✅ Commission rates updated successfully');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available, simulating commission update');
-    // Simulate success for development
-    return data;
-  }
+  return await saveSetting('commission-rates', data);
 };
 
 // Shipping Rules
 export const getShippingRules = async () => {
-  try {
-    console.log('Fetching shipping rules from backend...');
-    const response = await axiosInstance.get(API_ENDPOINTS.SHIPPING_RULES);
-    console.log('✅ Shipping rules loaded from backend');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available for shipping rules, using mock data');
-    return mockShippingRules;
-  }
+  const data = await getSetting('shipping-rules');
+  return data || defaultShippingRules;
 };
 
 export const updateShippingRules = async (data) => {
-  try {
-    console.log('Updating shipping rules...');
-    const response = await axiosInstance.put(API_ENDPOINTS.SHIPPING_RULES, data);
-    console.log('✅ Shipping rules updated successfully');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available, simulating shipping update');
-    return data;
-  }
+  return await saveSetting('shipping-rules', data);
 };
 
 // Tax Rules
 export const getTaxRules = async () => {
-  try {
-    console.log('Fetching tax rules from backend...');
-    const response = await axiosInstance.get(API_ENDPOINTS.TAX_RULES);
-    console.log('✅ Tax rules loaded from backend');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available for tax rules, using mock data');
-    return mockTaxRules;
-  }
+  const data = await getSetting('tax-rules');
+  return data || defaultTaxRules;
 };
 
 export const updateTaxRules = async (data) => {
-  try {
-    console.log('Updating tax rules...');
-    const response = await axiosInstance.put(API_ENDPOINTS.TAX_RULES, data);
-    console.log('✅ Tax rules updated successfully');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available, simulating tax update');
-    return data;
-  }
+  return await saveSetting('tax-rules', data);
 };
 
 // Banners
 export const getBanners = async () => {
-  try {
-    console.log('Fetching banners from backend...');
-    const response = await axiosInstance.get(API_ENDPOINTS.BANNERS);
-    console.log('✅ Banners loaded from backend');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available for banners, using mock data');
-    return mockBanners;
-  }
+  const data = await getSetting('banners');
+  return data || defaultBanners;
 };
 
 export const createBanner = async (data) => {
-  try {
-    console.log('Creating banner...');
-    const response = await axiosInstance.post(API_ENDPOINTS.BANNERS, data);
-    console.log('✅ Banner created successfully');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available, simulating banner creation');
-    // Simulate new banner
-    return {
-      id: Date.now(),
-      ...data,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-  }
+  const currentBanners = await getBanners();
+  const newBanner = { ...data, id: Date.now() };
+  const updatedBanners = [...currentBanners, newBanner];
+  await saveSetting('banners', updatedBanners);
+  return newBanner;
 };
 
 export const updateBanner = async (id, data) => {
-  try {
-    console.log(`Updating banner ${id}...`);
-    const response = await axiosInstance.put(`${API_ENDPOINTS.BANNERS}/${id}`, data);
-    console.log('✅ Banner updated successfully');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available, simulating banner update');
-    return {
-      id,
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
-  }
+  const currentBanners = await getBanners();
+  const updatedBanners = currentBanners.map(b => b.id === id ? { ...b, ...data } : b);
+  await saveSetting('banners', updatedBanners);
+  return { ...data, id };
 };
 
 export const deleteBanner = async (id) => {
-  try {
-    console.log(`Deleting banner ${id}...`);
-    const response = await axiosInstance.delete(`${API_ENDPOINTS.BANNERS}/${id}`);
-    console.log('✅ Banner deleted successfully');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available, simulating banner deletion');
-    return { success: true };
-  }
+  const currentBanners = await getBanners();
+  const updatedBanners = currentBanners.filter(b => b.id !== id);
+  await saveSetting('banners', updatedBanners);
+  return { success: true };
 };
 
 // Email Templates
 export const getEmailTemplates = async () => {
-  try {
-    console.log('Fetching email templates from backend...');
-    const response = await axiosInstance.get(API_ENDPOINTS.EMAIL_TEMPLATES);
-    console.log('✅ Email templates loaded from backend');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available for email templates, using mock data');
-    return mockEmailTemplates;
-  }
+  const data = await getSetting('email-templates');
+  return data || defaultEmailTemplates;
 };
 
 export const updateEmailTemplate = async (id, data) => {
-  try {
-    console.log(`Updating email template ${id}...`);
-    const response = await axiosInstance.put(`${API_ENDPOINTS.EMAIL_TEMPLATES}/${id}`, data);
-    console.log('✅ Email template updated successfully');
-    return response.data;
-  } catch (error) {
-    console.warn('⚠️ Backend not available, simulating email template update');
-    return {
-      id,
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
-  }
+  const currentTemplates = await getEmailTemplates();
+  const updatedTemplates = currentTemplates.map(t => t.id === id ? { ...t, ...data } : t);
+  await saveSetting('email-templates', updatedTemplates);
+  return { ...data, id };
 };
 
 export default {

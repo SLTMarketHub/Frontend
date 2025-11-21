@@ -1,4 +1,7 @@
-// Mock data for development - Replace with real API calls in production
+// Mock data for development and testing
+// This file contains sample data used when backend endpoints are not available
+
+import { PRODUCT_PLACEHOLDER, generateBannerPlaceholder } from './imageUtils';
 
 // ============ ANALYTICS DATA ============
 export const mockOverviewStats = {
@@ -27,16 +30,16 @@ export const mockSalesChartData = [
 
 // Top products used by Analytics page
 export const mockTopProducts = [
-  { id: 1, name: 'Samsung Galaxy S24 Ultra', category: 'Electronics', sales: 342, revenue: 68400000, stock: 45, image: 'https://via.placeholder.com/50' },
-  { id: 2, name: 'Apple iPhone 15 Pro', category: 'Electronics', sales: 298, revenue: 59600000, stock: 32, image: 'https://via.placeholder.com/50' },
-  { id: 3, name: 'Sony WH-1000XM5 Headphones', category: 'Electronics', sales: 267, revenue: 13350000, stock: 78, image: 'https://via.placeholder.com/50' },
-  { id: 4, name: 'Dell XPS 15 Laptop', category: 'Computers', sales: 189, revenue: 56700000, stock: 23, image: 'https://via.placeholder.com/50' },
-  { id: 5, name: 'Nike Air Max 270', category: 'Fashion', sales: 423, revenue: 21150000, stock: 156, image: 'https://via.placeholder.com/50' },
-  { id: 6, name: "Levi's 501 Original Jeans", category: 'Fashion', sales: 387, revenue: 9675000, stock: 234, image: 'https://via.placeholder.com/50' },
-  { id: 7, name: 'KitchenAid Stand Mixer', category: 'Home & Kitchen', sales: 156, revenue: 15600000, stock: 67, image: 'https://via.placeholder.com/50' },
-  { id: 8, name: 'Dyson V15 Vacuum Cleaner', category: 'Home & Kitchen', sales: 134, revenue: 13400000, stock: 45, image: 'https://via.placeholder.com/50' },
-  { id: 9, name: 'PlayStation 5', category: 'Gaming', sales: 276, revenue: 55200000, stock: 89, image: 'https://via.placeholder.com/50' },
-  { id: 10, name: 'Xbox Series X', category: 'Gaming', sales: 245, revenue: 49000000, stock: 102, image: 'https://via.placeholder.com/50' },
+  { id: 1, name: 'Samsung Galaxy S24 Ultra', category: 'Electronics', sales: 342, revenue: 68400000, stock: 45, image: PRODUCT_PLACEHOLDER },
+  { id: 2, name: 'Apple iPhone 15 Pro', category: 'Electronics', sales: 298, revenue: 59600000, stock: 32, image: PRODUCT_PLACEHOLDER },
+  { id: 3, name: 'Sony WH-1000XM5 Headphones', category: 'Electronics', sales: 267, revenue: 13350000, stock: 78, image: PRODUCT_PLACEHOLDER },
+  { id: 4, name: 'Dell XPS 15 Laptop', category: 'Computers', sales: 189, revenue: 56700000, stock: 23, image: PRODUCT_PLACEHOLDER },
+  { id: 5, name: 'Nike Air Max 270', category: 'Fashion', sales: 423, revenue: 21150000, stock: 156, image: PRODUCT_PLACEHOLDER },
+  { id: 6, name: "Levi's 501 Original Jeans", category: 'Fashion', sales: 387, revenue: 9675000, stock: 234, image: PRODUCT_PLACEHOLDER },
+  { id: 7, name: 'KitchenAid Stand Mixer', category: 'Home & Kitchen', sales: 156, revenue: 15600000, stock: 67, image: PRODUCT_PLACEHOLDER },
+  { id: 8, name: 'Dyson V15 Vacuum Cleaner', category: 'Home & Kitchen', sales: 134, revenue: 13400000, stock: 45, image: PRODUCT_PLACEHOLDER },
+  { id: 9, name: 'PlayStation 5', category: 'Gaming', sales: 276, revenue: 55200000, stock: 89, image: PRODUCT_PLACEHOLDER },
+  { id: 10, name: 'Xbox Series X', category: 'Gaming', sales: 245, revenue: 49000000, stock: 102, image: PRODUCT_PLACEHOLDER },
 ];
 
 export const mockTopCategories = [
@@ -116,7 +119,7 @@ export const mockBanners = [
     id: 1,
     title: 'Summer Sale 2025',
     description: 'Up to 50% off on selected items',
-    imageUrl: 'https://via.placeholder.com/1200x400/00A651/FFFFFF?text=Summer+Sale',
+    imageUrl: generateBannerPlaceholder(1200, 400, 'Summer Sale', '00A651', 'FFFFFF'),
     linkUrl: '/shop/summer-sale',
     status: 'active',
     position: 'home-hero',
@@ -128,7 +131,7 @@ export const mockBanners = [
     id: 2,
     title: 'New Electronics',
     description: 'Latest gadgets',
-    imageUrl: 'https://via.placeholder.com/1200x400/0066CC/FFFFFF?text=Electronics',
+    imageUrl: generateBannerPlaceholder(1200, 400, 'Electronics', '0066CC', 'FFFFFF'),
     linkUrl: '/category/electronics',
     status: 'active',
     position: 'home-secondary',

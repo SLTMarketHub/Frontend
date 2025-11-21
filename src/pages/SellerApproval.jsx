@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  React, { useState, useEffect } from 'react';
 import { UserCheck, UserX, Store, Mail, Calendar, Eye, Star, ShoppingCart, TrendingUp, Package } from 'lucide-react';
 import Card, { StatsCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -6,18 +6,7 @@ import DataTable from '../components/common/DataTable';
 import Modal from '../components/common/Modal';
 import { formatDate, getStatusColor, formatCurrency, formatNumber } from '../utils/formatters';
 import useToast from '../hooks/useToast';
-import { tmf668AdminService, tmf681AdminService, userManagementService } from '../services/admin';
-
-const dummySellers = [
-  { id: 1, name: "John Doe", email: "john@example.com", status: "pending", storeName: "John's Electronics", phone: "+94771234567", appliedAt: "2025-03-10", revenue: 0, totalOrders: 0, rating: 0, productsListed: 0 },
-  { id: 2, name: "Jane Smith", email: "jane@example.com", status: "approved", storeName: "Fashion Hub", phone: "+94772345678", appliedAt: "2025-02-15", revenue: 850000, totalOrders: 156, rating: 4.8, productsListed: 45 },
-  { id: 3, name: "Alice Johnson", email: "alice@example.com", status: "rejected", storeName: "Alice's Books", phone: "+94773456789", appliedAt: "2025-03-12", revenue: 0, totalOrders: 0, rating: 0, productsListed: 0 },
-  { id: 4, name: "Bob Williams", email: "bob@example.com", status: "pending", storeName: "Tech World", phone: "+94774567890", appliedAt: "2025-03-14", revenue: 0, totalOrders: 0, rating: 0, productsListed: 0 },
-  { id: 5, name: "Emma Brown", email: "emma@example.com", status: "pending", storeName: "Home Essentials", phone: "+94775678901", appliedAt: "2025-03-16", revenue: 0, totalOrders: 0, rating: 0, productsListed: 0 },
-  { id: 6, name: "Liam Davis", email: "liam@example.com", status: "approved", storeName: "Gaming Pro", phone: "+94776789012", appliedAt: "2025-01-20", revenue: 1250000, totalOrders: 289, rating: 4.9, productsListed: 67 },
-  { id: 7, name: "Olivia Wilson", email: "olivia@example.com", status: "rejected", storeName: "Beauty Shop", phone: "+94777890123", appliedAt: "2025-03-08", revenue: 0, totalOrders: 0, rating: 0, productsListed: 0 },
-  { id: 8, name: "Michael Chen", email: "michael@example.com", status: "approved", storeName: "Tech Store LK", phone: "+94778901234", appliedAt: "2023-11-20", revenue: 2340000, totalOrders: 512, rating: 4.7, productsListed: 89 },
-];
+import { sellersService } from '../services/admin';
 
 export default function SellerApproval() {
   const [loading, setLoading] = useState(true);
@@ -33,31 +22,13 @@ export default function SellerApproval() {
   const fetchSellers = async () => {
     setLoading(true);
     try {
-      const partnershipsResponse = await tmf668AdminService.listPartnerships({ limit: 100 });
-      
-      // Format partnerships as sellers
-      const formattedSellers = (Array.isArray(partnershipsResponse) ? partnershipsResponse : partnershipsResponse.items || []).map(p => ({
-        id: p.id,
-        name: p.name || 'Unknown Seller',
-        email: p.contact?.contactMedium?.find(m => m.mediumType === 'email')?.characteristic?.emailAddress || 'N/A',
-        phone: p.contact?.contactMedium?.find(m => m.mediumType === 'phone')?.characteristic?.phoneNumber || 'N/A',
-        status: p.status || 'pending',
-        storeName: p.organization?.tradingName || p.name || 'Unknown Store',
-        appliedAt: p.agreementPeriod?.startDateTime || p.createdDate || new Date().toISOString(),
-        revenue: p.characteristic?.find(c => c.name === 'totalRevenue')?.value || 0,
-        totalOrders: p.characteristic?.find(c => c.name === 'totalOrders')?.value || 0,
-        rating: p.characteristic?.find(c => c.name === 'rating')?.value || 0,
-        productsListed: p.characteristic?.find(c => c.name === 'totalProducts')?.value || 0,
-        documents: p.attachment || [],
-        address: p.contact?.postalAddress?.[0]?.formattedAddress || 'N/A',
-        businessType: p.partnershipType?.name || 'Individual'
-      }));
-      
-      setSellers(formattedSellers);
+      const sellersData = await sellersService.getAllSellers();
+      setSellers(sellersData);
     } catch (err) {
       console.error('Error fetching sellers:', err);
-      // Use mock data as fallback
-      setSellers(dummySellers);
+      error('Failed to load sellers');
+      // Set empty array on error
+      setSellers([]);
     } finally {
       setLoading(false);
     }
@@ -65,45 +36,16 @@ export default function SellerApproval() {
 
   const handleApprove = async (id) => {
     try {
-      const seller = sellers.find(s => s.id === id);
+      await sellersService.approveSeller(id);
       
-      // Use the userManagementService for consistent status updates
-      await userManagementService.updateUserStatus(
-        id,
-        'seller',
-        'active',
-        'Seller application approved by admin'
-      );
-      
-      // Send approval notification
-      if (seller) {
-        await tmf681AdminService.createMessage({
-          sender: {
-            id: 'admin',
-            name: 'Platform Admin',
-            '@type': 'Organization'
-          },
-          receiver: [{
-            id: seller.id,
-            name: seller.name,
-            '@type': 'Organization'
-          }],
-          communicationType: 'seller_approval',
-          subject: 'Seller Application Approved',
-          content: `Congratulations! Your seller application for "${seller.storeName}" has been approved. You can now start listing products on our marketplace.`,
-          channel: ['email'],
-          priority: 'high',
-          status: 'pending'
-        });
-      }
-      
+      // Update local state
       setSellers(
         sellers.map((seller) =>
-          seller.id === id ? { ...seller, status: 'active' } : seller
+          seller.id === id ? { ...seller, status: 'approved' } : seller
         )
       );
       
-      // Refresh the seller list to ensure consistency
+      // Refresh the seller list
       setTimeout(() => {
         fetchSellers();
       }, 1000);
@@ -117,45 +59,17 @@ export default function SellerApproval() {
 
   const handleReject = async (id) => {
     try {
-      const seller = sellers.find(s => s.id === id);
+      const reason = "Seller application rejected by admin";
+      await sellersService.rejectSeller(id, reason);
       
-      // Use the userManagementService for consistent status updates
-      await userManagementService.updateUserStatus(
-        id,
-        'seller',
-        'rejected',
-        'Seller application rejected by admin'
-      );
-      
-      // Send rejection notification
-      if (seller) {
-        await tmf681AdminService.createMessage({
-          sender: {
-            id: 'admin',
-            name: 'Platform Admin',
-            '@type': 'Organization'
-          },
-          receiver: [{
-            id: seller.id,
-            name: seller.name,
-            '@type': 'Organization'
-          }],
-          communicationType: 'seller_rejection',
-          subject: 'Seller Application Update',
-          content: `We regret to inform you that your seller application for "${seller.storeName}" has been reviewed and cannot be approved at this time. Please contact support for more information.`,
-          channel: ['email'],
-          priority: 'normal',
-          status: 'pending'
-        });
-      }
-      
+      // Update local state
       setSellers(
         sellers.map((seller) =>
           seller.id === id ? { ...seller, status: 'rejected' } : seller
         )
       );
       
-      // Refresh the seller list to ensure consistency
+      // Refresh the seller list
       setTimeout(() => {
         fetchSellers();
       }, 1000);
