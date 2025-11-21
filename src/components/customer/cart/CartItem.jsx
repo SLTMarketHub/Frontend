@@ -10,13 +10,16 @@ const CartItem = () => {
     setCartItems(storedCart);
   }, []);
 
-  // Update cart items in both state and localStorage
+  // Update cart items in both state & localStorage
   const updateCartStorage = (updatedCart) => {
     setCartItems(updatedCart);
     localStorage.setItem("cart", JSON.stringify(updatedCart));
+
+    // 🔹 Trigger a custom event so CartSummary updates immediately
+    window.dispatchEvent(new Event("cartUpdated"));
   };
 
-  // Update quantity of a specific product
+  // Update quantity safely
   const updateQuantity = (productId, newQuantity) => {
     const updatedCart = cartItems.map((item) =>
       item.productId === productId
@@ -26,11 +29,18 @@ const CartItem = () => {
     updateCartStorage(updatedCart);
   };
 
-  // Remove product from cart
+  // Remove a product from cart
   const removeItem = (productId) => {
     const updatedCart = cartItems.filter((item) => item.productId !== productId);
     updateCartStorage(updatedCart);
   };
+
+  // Compute total with safe parsing
+  const total = cartItems.reduce((sum, item) => {
+    const numericPrice =
+      parseFloat(item.price?.toString().replace(/[^0-9.]/g, "")) || 0;
+    return sum + numericPrice * (item.quantity || 1);
+  }, 0);
 
   if (cartItems.length === 0) {
     return (
@@ -55,19 +65,17 @@ const CartItem = () => {
           {/* Product Info */}
           <div className="flex items-center gap-4 w-full md:w-auto">
             <img
-              src={item.image}
+              src={item.image || "/no-image.png"}
               alt={item.name}
               className="w-24 h-24 md:w-28 md:h-28 object-cover rounded-lg"
             />
             <div className="flex flex-col">
-              <h3 className="text-lg font-semibold text-gray-800">
-                {item.name}
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-800">{item.name}</h3>
               <p className="text-gray-500 mt-1">Rs. {item.price}</p>
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Quantity & Remove */}
           <div className="flex items-center gap-4 mt-4 md:mt-0">
             <input
               type="number"
@@ -76,7 +84,7 @@ const CartItem = () => {
               onChange={(e) =>
                 updateQuantity(item.productId, parseInt(e.target.value))
               }
-              className="w-16 border rounded-lg p-2 text-center"
+              className="w-16 border border-gray-300 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               onClick={() => removeItem(item.productId)}
@@ -90,10 +98,7 @@ const CartItem = () => {
 
       {/* Cart Total */}
       <div className="mt-6 text-right text-xl font-semibold text-gray-800">
-        Total: Rs.
-        {cartItems
-          .reduce((total, item) => total + item.price * item.quantity, 0)
-          .toFixed(2)}
+        Total: Rs. {total.toFixed(2)}
       </div>
     </div>
   );

@@ -1,9 +1,9 @@
 import { api, upload } from './api';
 
 // TMF620 base paths through API Gateway
-const TMF620_BASE = '/productCatalog/v5';
-const OFFERING_PATH = `${TMF620_BASE}/productOffering`;
-const PRICE_PATH = `${TMF620_BASE}/productOfferingPrice`;
+const TMF620_BASE = 'https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5';
+const OFFERING_PATH = "https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5/productOffering";
+const PRICE_PATH = "https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5/productOfferingPrice";
 
 // Utilities
 const generateId = (prefix) => `${prefix}-${Date.now()}`;
@@ -19,10 +19,10 @@ export async function listProductOfferings({ offset = 0, limit = 50, name = '' }
 export async function getProductOffering(id) {
   const params = { fields: 'id,name,description,lifecycleStatus,productOfferingPrice,category,attachment,createdAt' };
   const { data } = await api.get(`${OFFERING_PATH}/${id}`, { params });
-  return api.get('/productOffering', { params })
+  return api.get('https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5/productOffering', { params })
 }
 
-export async function createProductOffering({ name, description, categoryName, lifecycleStatus = 'Active', isSellable = true, imageUrls = [] }) {
+export async function createProductOffering({ name, description, categoryName, lifecycleStatus = 'Active', isSellable = true, images = [], imageUrls = [] }) {
   const id = generateId('OFF');
   const body = {
     id,
@@ -31,14 +31,24 @@ export async function createProductOffering({ name, description, categoryName, l
     lifecycleStatus,
     isSellable,
     category: categoryName ? [{ name: categoryName }] : [],
-    attachment: (imageUrls || []).map((url, index) => ({
+    attachment: []
+  };
+
+  // Handle both image URLs and pre-formatted image objects
+  if (images && images.length > 0) {
+    // If images are already in the correct format
+    body.attachment = images;
+  } else if (imageUrls && imageUrls.length > 0) {
+    // For backward compatibility - convert URLs to attachment objects
+    body.attachment = imageUrls.map((url, index) => ({
       id: `${id}-att-${index + 1}`,
-      attachmentType: 'image',
+      type: 'image',
       url,
       name: `image-${index + 1}`,
       '@type': 'Attachment'
-    }))
-  };
+    }));
+  }
+
   const { data } = await api.post(OFFERING_PATH, body);
   return data; // created offering
 }

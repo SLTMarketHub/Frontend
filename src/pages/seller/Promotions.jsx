@@ -4,6 +4,9 @@ import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
 import Table from '../../components/seller/Table';
 import Modal from '../../components/seller/Modal';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import { formatDate, formatPercentage, getStatusColor } from '../../utils/seller/formatters';
 import toast from 'react-hot-toast';
 import { listProductOfferingPrices, createDiscountPromotion, deleteProductOfferingPrice } from '../../services/seller/productService';
@@ -176,6 +179,9 @@ const Promotions = () => {
   const totalUsage = promotions.reduce((sum, p) => sum + (p.usageCount || 0), 0);
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -277,6 +283,9 @@ const Promotions = () => {
         </div>
       </Modal>
     </div>
+    </Layout>
+    <Footer />
+    </>
   );
 };
 

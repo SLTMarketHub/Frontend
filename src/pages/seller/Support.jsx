@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Book, HelpCircle, MessageCircle, FileText, ExternalLink, Search, ChevronRight } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 
 const mockFAQs = [
   { id: '1', question: 'How do I add a new product to my store?', answer: 'To add a new product, navigate to the Products section and click the "Add Product" button. Fill in the required information including name, description, price, and upload product images.', category: 'Products' },
@@ -55,6 +58,9 @@ const Support = () => {
   };
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -202,6 +208,9 @@ const Support = () => {
         </div>
       </Card>
     </div>
+     </Layout>
+    <Footer />
+    </>
   );
 };
 

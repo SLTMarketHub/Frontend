@@ -13,12 +13,12 @@ export default function Footer() {
           </p>
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white mb-3">Quick Links</h3>
+          <h3 className="text-lg font-semibold text-white mb-3">Hello Seller</h3>
           <ul className="space-y-2 text-sm">
-            <li><a href="/" className="hover:text-white">Home</a></li>
-            <li><a href="/products" className="hover:text-white">Products</a></li>
-            <li><a href="/offers" className="hover:text-white">Offers</a></li>
-            <li><a href="/contact" className="hover:text-white">Contact</a></li>
+            <li><a href="/loginOthers" className="hover:text-white">Seller Sign In</a></li>
+            <li><a href="/registerOthers" className="hover:text-white">Sign Up as a Seller</a></li>
+            <li><a href="/" className="hover:text-white">About MarketHub</a></li>
+            <li><a href="/" className="hover:text-white">Contact</a></li>
           </ul>
         </div>
         <div>

@@ -3,6 +3,9 @@ import { Save, Upload, MapPin, Clock, Phone, Mail } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
 import { useForm } from '../../hooks/seller/useForm';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import toast from 'react-hot-toast';
 
 const StoreManagement = () => {
@@ -73,6 +76,9 @@ const StoreManagement = () => {
   ];
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -204,6 +210,9 @@ const StoreManagement = () => {
         </div>
       </form>
     </div>
+    </Layout>
+    <Footer />
+    </>
   );
 };
 

@@ -3,34 +3,18 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Package, Truck, MapPin, CreditCard, Mail, Phone } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/formatters';
 import toast from 'react-hot-toast';
-
-const mockOrder = {
-  id: 'ORD-001',
-  customerName: 'A1',
-  customerEmail: 'a1@gmail.com',
-  customerPhone: '+94123456789',
-  total: 20299.00,
-  subtotal: 20000.00,
-  tax: 199.00,
-  shipping: 100.00,
-  status: 'pending',
-  paymentStatus: 'paid',
-  paymentMethod: 'Credit Card',
-  items: [
-    { id: '1', productId: 'P001', productName: 'Wireless Bluetooth Headphones', quantity: 1, price: 5099.00, total: 5099.00, image: 'https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg' },
-    { id: '2', productId: 'P002', productName: 'Smart Fitness Watch', quantity: 1, price: 10549.00, total: 10549.00, image: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg' },
-  ],
-  shippingAddress: { name: 'A1', street: '123 Main Street', city: 'A city', state: 'AC', zipCode: '10001', country: 'Sri Lanka' },
-  billingAddress: { name: 'A1', street: '123 Main Street', city: 'B city', state: 'BC', zipCode: '10001', country: 'Sri Lanka' },
-  createdAt: '2024-09-15T10:30:00Z',
-  updatedAt: '2024-09-15T10:30:00Z',
-};
+import { fetchOrderById, updateOrderById } from '../../services/seller/orderService';
+import placeholderImg from '../../assets/images/placeholderImg.jpg';
 
 const OrderDetails = () => {
   const { id } = useParams();
-  const [order, setOrder] = useState(mockOrder);
+  // No mock data — initialize to null. TODO: fetch order by id from API and setOrder(response)
+  const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [orderLoading, setOrderLoading] = useState(true);
 
@@ -38,7 +22,32 @@ const OrderDetails = () => {
     const loadOrder = async () => {
       setOrderLoading(true);
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const po = await fetchOrderById(id);
+        const mapped = {
+          id: po.id,
+          createdAt: po.orderDate || po.createdAt || new Date().toISOString(),
+          status: po.state || 'pending',
+          paymentStatus: 'pending',
+          paymentMethod: 'N/A',
+          items: (po.orderItem || []).map((oi) => ({
+            id: oi.id,
+            productName: oi.product?.name || 'Item',
+            quantity: oi.quantity || 1,
+            price: 0,
+            total: 0,
+            image: null
+          })),
+          shippingAddress: { name: '', street: '', city: '', state: '', zipCode: '', country: '' },
+          billingAddress: { name: '', street: '', city: '', state: '', zipCode: '', country: '' },
+          customerEmail: po.relatedParty?.find(r => r.role === 'Customer')?.email || '',
+          customerPhone: po.relatedParty?.find(r => r.role === 'Customer')?.phone || ''
+            || po.relatedParty?.find(r => r.role === 'Customer')?.telephone || '',
+          subtotal: 0,
+          tax: 0,
+          shipping: 0,
+          total: 0
+        };
+        setOrder(mapped);
       } catch (error) {
         toast.error('Failed to load order');
       } finally {
@@ -46,16 +55,14 @@ const OrderDetails = () => {
       }
     };
 
-    if (id) {
-      loadOrder();
-    }
+    if (id) loadOrder();
   }, [id]);
 
   const updateOrderStatus = async (newStatus) => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setOrder({ ...order, status: newStatus });
+      await updateOrderById(id, { state: newStatus });
+      setOrder((prev) => ({ ...prev, status: newStatus }));
       toast.success('Order status updated successfully');
     } catch (error) {
       toast.error('Failed to update order status');
@@ -84,8 +91,23 @@ const OrderDetails = () => {
     );
   }
 
+  // If there's no order data, show a minimal placeholder.
+  if (!order) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <h3 className="text-lg font-medium text-gray-900">Order not found</h3>
+          <p className="text-gray-600">No order data available for id: {id}</p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <>
+    <Header />
+    <Layout>
+       <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Link to="/orders" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -109,7 +131,7 @@ const OrderDetails = () => {
             <div className="space-y-4">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
-                  <img src={item.image} alt={item.productName} className="w-16 h-16 object-cover rounded-lg" />
+                   <img src={item.image || placeholderImg} alt={item.productName} className="w-16 h-16 object-cover rounded-lg" />
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">{item.productName}</h4>
                     <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
@@ -186,6 +208,9 @@ const OrderDetails = () => {
         </div>
       </div>
     </div>
+     </Layout>
+    <Footer />
+    </>
   );
 };
 

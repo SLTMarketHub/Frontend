@@ -10,11 +10,14 @@ export default function CategorySection() {
     useEffect(() => {
         async function fetchCategory() {
             try {
+                // console.log(import.meta.env);
+                // console.log(`Fetching categories from: ${import.meta.env.VITE_ENDPOINT_TMF620_CATEGORY}`);
                 const res = await fetch(`${VITE_ENDPOINT_TMF620_CATEGORY}`);
                 const data = await res.json();
 
                 if (Array.isArray(data?.data)) {
                     setCategories(data.data);
+                    // console.log("Fetched categories:", categories);
                 } else {
                     setCategories([]);
                 }

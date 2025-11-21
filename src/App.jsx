@@ -65,7 +65,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/loginOthers" element={<LoginOthersPage />} />
             <Route path="/complete-signup" element={<CompleteSignupPage />} />
-            <Route path="/google-success" element={<GoogleSuccess />} />
+            <Route path="/auth/google/success" element={<GoogleSuccess />} />
             <Route path="/google-callback" element={<GoogleCallback />} />
             
             {/* 🔹 Customer routes (public) */}

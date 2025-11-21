@@ -1,28 +1,12 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
+import { ThreeDots } from "react-loader-spinner";
 
 const UserPage = () => {
-  // ✅ For later: Fetch from backend using sessionStorage
-  // const [user, setUser] = useState(null);
-  // const [orders, setOrders] = useState([]);
-  //
-  // useEffect(() => {
-  //   const storedUserId = sessionStorage.getItem("userId");
-  //   if (storedUserId) {
-  //     fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/${storedUserId}`)
-  //       .then((res) => res.json())
-  //       .then((data) => setUser(data))
-  //       .catch((err) => console.error("Error fetching user:", err));
-  //
-  //     fetch(`${import.meta.env.VITE_API_BASE_URL}/api/orders/user/${storedUserId}`)
-  //       .then((res) => res.json())
-  //       .then((data) => setOrders(data))
-  //       .catch((err) => console.error("Error fetching orders:", err));
-  //   }
-  // }, []);
-
   const [userDetails, setUserDetails] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwords, setPasswords] = useState({
@@ -31,14 +15,89 @@ const UserPage = () => {
     repeat: "",
   });
   const [passwordMatch, setPasswordMatch] = useState(true);
+  const [loading, setLoading] = useState(true);
 
+  const [editForm, setEditForm] = useState({
+    name: "",
+    emailAddress: "",
+    phoneNumber: "",
+    street1: "",
+    street2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "",
+  });
+
+  // ✅ Load user info from localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUserDetails(JSON.parse(storedUser));
-    }
+    if (storedUser) setUserDetails(JSON.parse(storedUser));
   }, []);
 
+  // ✅ Fetch customer data
+  useEffect(() => {
+    if (!userDetails) return;
+
+    const fetchData = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_ENDPOINT_TMF629_BY_ENGAGED_PARTY}/${userDetails.id}`
+        );
+
+        if (!response.ok)
+          throw new Error(`HTTP error! Status: ${response.status}`);
+
+        const data = await response.json();
+        setUserData(data);
+
+        setEditForm({
+          name: data.name || "",
+          emailAddress: data?.contactMedium?.[0]?.emailAddress || "",
+          phoneNumber: data?.contactMedium?.[0]?.phoneNumber || "",
+          street1: data?.address?.street1 || "",
+          street2: data?.address?.street2 || "",
+          city: data?.address?.city || "",
+          state: data?.address?.state || "",
+          postalCode: data?.address?.postalCode || "",
+          country: data?.address?.country || "",
+        });
+
+        console.log("✅ User Data Fetched:", data);
+      } catch (err) {
+        console.error("❌ Error fetching user data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [userDetails]);
+
+  // ✅ Fetch orders by user ID
+  useEffect(() => {
+    if (!userDetails?.id) return;
+
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_ENDPOINT_TMF622_ORDER_BY_CUSTOMER}/${userDetails.id}`
+        );
+
+        if (!response.ok) throw new Error("Failed to fetch orders");
+
+        const data = await response.json();
+        console.log("✅ Orders fetched:", data);
+        setOrders(data);
+      } catch (err) {
+        console.error("❌ Error fetching orders:", err);
+      }
+    };
+
+    fetchOrders();
+  }, [userData]);
+
+  // ✅ Handle password input
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...passwords, [name]: value };
@@ -46,9 +105,73 @@ const UserPage = () => {
     setPasswordMatch(updated.new === updated.repeat);
   };
 
+  // ✅ Handle edit form input change
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // ✅ Submit profile changes
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const updatedData = {
+        name: editForm.name,
+        contactMedium: [
+          {
+            "@type": "EmailContact",
+            contactType: "personal",
+            preferred: true,
+            emailAddress: editForm.emailAddress,
+            phoneNumber: editForm.phoneNumber,
+          },
+        ],
+        address: {
+          street1: editForm.street1,
+          street2: editForm.street2,
+          city: editForm.city,
+          state: editForm.state,
+          postalCode: editForm.postalCode,
+          country: editForm.country,
+        },
+      };
+
+      const response = await fetch(
+        `${import.meta.env.VITE_ENDPOINT_TMF629}/${userData._id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedData),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to update profile");
+
+      const updatedUser = await response.json();
+      setUserData(updatedUser);
+      setShowEditProfile(false);
+      alert("✅ Profile updated successfully!");
+    } catch (err) {
+      console.error("❌ Error updating profile:", err);
+      alert("Failed to update profile. Please try again.");
+    }
+  };
+
   const ViewOrdersBtnClick = () => {
     window.location.href = `/user/${userDetails.id}/orders`;
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 flex justify-center items-center py-10">
+          <ThreeDots color="#4DB848" height="60" width="60" />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -60,17 +183,26 @@ const UserPage = () => {
           <div className="flex flex-col md:flex-row items-center justify-center mb-8 border-b pb-6">
             <div className="text-center">
               <h1 className="text-3xl font-bold text-gray-800">
-                Hi, {userDetails?.username || "Customer Name"} 👋
+                Hi, {userData?.name || "User"} 👋
               </h1>
+
               <p className="text-gray-600 mt-1">
-                {userDetails?.email || "customer@example.com"}
+                Email: {userData?.contactMedium?.[0]?.emailAddress || "N/A"}
               </p>
-              <p className="text-gray-600">+94 71 234 5678</p>
-              <p className="text-gray-600">123 Main Street, Colombo</p>
-              <p className="text-gray-500 text-sm mt-1">
-                Member since January 2023
+              <p className="text-gray-600">
+                Phone: {userData?.contactMedium?.[0]?.phoneNumber || "N/A"}
+              </p>
+              <p className="text-gray-600">
+                Address: {userData?.address?.street1 || "N/A"},{" "}
+                {userData?.address?.city || ""}
               </p>
 
+              <p className="text-gray-500 text-sm mt-1">
+                Member since{" "}
+                {userData?.createdAt
+                  ? new Date(userData.createdAt).toLocaleDateString()
+                  : "N/A"}
+              </p>
               <div className="flex flex-wrap gap-4 mt-6 justify-center">
                 <button
                   onClick={() => setShowEditProfile(true)}
@@ -94,28 +226,65 @@ const UserPage = () => {
               <h2 className="text-xl font-semibold text-gray-800 mb-4">
                 Recent Orders
               </h2>
-              <ul className="space-y-3">
-                <li className="border rounded-lg p-3 bg-white">
-                  <p className="font-medium">Order #ORD-1045</p>
-                  <p className="text-sm text-gray-600">
-                    Date: 2025-10-28 | Status: Delivered
-                  </p>
-                  <p className="text-sm text-gray-600">Total: LKR 12,500.00</p>
-                </li>
-                <li className="border rounded-lg p-3 bg-white">
-                  <p className="font-medium">Order #ORD-1021</p>
-                  <p className="text-sm text-gray-600">
-                    Date: 2025-10-12 | Status: In Progress
-                  </p>
-                  <p className="text-sm text-gray-600">Total: LKR 4,200.00</p>
-                </li>
-              </ul>
-              <button
-                onClick={ViewOrdersBtnClick}
-                className="mt-4 text-blue-600 hover:underline font-medium cursor-pointer"
-              >
-                View All Orders →
-              </button>
+
+              {orders.length === 0 ? (
+                <p className="text-gray-600">No orders found.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {orders.slice(0, 5).map((order) => (
+                    <li
+                      key={order.id}
+                      className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition"
+                    >
+                      <div className="flex justify-between items-center">
+                        <p className="font-medium text-gray-800">
+                          Order #{order.id?.slice(0, 8) || "N/A"}
+                        </p>
+                        <span
+                          className={`px-2 py-1 rounded-full text-sm ${order.state === "acknowledged"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-200 text-gray-700"
+                            }`}
+                        >
+                          {order.state || "Unknown"}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-gray-600 mt-1">
+                        Date:{" "}
+                        {order.orderDate
+                          ? new Date(order.orderDate).toLocaleDateString()
+                          : "N/A"}
+                      </p>
+
+                      {/* ✅ Display order items */}
+                      <div className="mt-3">
+                        <p className="text-gray-700 font-medium">Items:</p>
+                        <ul className="text-sm text-gray-600 list-disc ml-5 mt-1">
+                          {order.orderItems?.map((item) => (
+                            <li key={item.id}>
+                              {item.productName} x {item.quantity} = Rs.{" "}
+                              {(item.price * item.quantity).toFixed(2)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <p className="text-gray-800 font-semibold mt-3">
+                        Total: Rs. {order.total?.toFixed(2) || "0.00"}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {orders.length > 0 && (
+                <button
+                  onClick={ViewOrdersBtnClick}
+                  className="mt-4 text-blue-600 hover:underline font-medium cursor-pointer"
+                >
+                  View All Orders →
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -123,10 +292,10 @@ const UserPage = () => {
 
       <Footer />
 
-      {/* 🟦 Edit Profile Popup */}
+      {/* ✅ Edit Profile Modal */}
       {showEditProfile && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex justify-center items-center z-50 animate-fadeIn">
-          <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-lg relative">
+          <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-lg relative overflow-y-auto max-h-[90vh]">
             <button
               onClick={() => setShowEditProfile(false)}
               className="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl"
@@ -136,12 +305,14 @@ const UserPage = () => {
             <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">
               Edit Profile
             </h2>
-            <form className="space-y-4">
+            <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
                 <label className="block text-gray-700">Full Name</label>
                 <input
                   type="text"
-                  defaultValue="Customer Name"
+                  name="name"
+                  value={editForm.name}
+                  onChange={handleEditChange}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -149,7 +320,9 @@ const UserPage = () => {
                 <label className="block text-gray-700">Email</label>
                 <input
                   type="email"
-                  defaultValue="customer@example.com"
+                  name="emailAddress"
+                  value={editForm.emailAddress}
+                  onChange={handleEditChange}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -157,18 +330,38 @@ const UserPage = () => {
                 <label className="block text-gray-700">Phone</label>
                 <input
                   type="tel"
-                  defaultValue="+94 71 234 5678"
+                  name="phoneNumber"
+                  value={editForm.phoneNumber}
+                  onChange={handleEditChange}
                   className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div>
-                <label className="block text-gray-700">Address</label>
-                <input
-                  type="text"
-                  defaultValue="123 Main Street, Colombo"
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+
+              <hr className="my-3" />
+              <h3 className="text-gray-700 font-medium">Address</h3>
+
+              {[
+                "street1",
+                "street2",
+                "city",
+                "state",
+                "postalCode",
+                "country",
+              ].map((field) => (
+                <div key={field}>
+                  <label className="block text-gray-700 capitalize">
+                    {field.replace(/([A-Z])/g, " $1")}
+                  </label>
+                  <input
+                    type="text"
+                    name={field}
+                    value={editForm[field]}
+                    onChange={handleEditChange}
+                    className="w-full border rounded-lg px-3 py-2"
+                  />
+                </div>
+              ))}
+
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   type="button"
@@ -182,80 +375,6 @@ const UserPage = () => {
                   className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
                 >
                   Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 🟧 Change Password Popup */}
-      {showChangePassword && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black/20 flex justify-center items-center z-50 animate-fadeIn">
-          <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-lg relative">
-            <button
-              onClick={() => setShowChangePassword(false)}
-              className="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl"
-            >
-              ✕
-            </button>
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">
-              Change Password
-            </h2>
-            <form className="space-y-4">
-              <div>
-                <label className="block text-gray-700">Current Password</label>
-                <input
-                  type="password"
-                  name="current"
-                  value={passwords.current}
-                  onChange={handlePasswordChange}
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">New Password</label>
-                <input
-                  type="password"
-                  name="new"
-                  value={passwords.new}
-                  onChange={handlePasswordChange}
-                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700">Repeat New Password</label>
-                <input
-                  type="password"
-                  name="repeat"
-                  value={passwords.repeat}
-                  onChange={handlePasswordChange}
-                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
-                    passwordMatch
-                      ? "focus:ring-blue-500"
-                      : "focus:ring-red-500 border-red-400"
-                  }`}
-                />
-                {!passwordMatch && (
-                  <p className="text-red-500 text-sm mt-1">
-                    Passwords do not match.
-                  </p>
-                )}
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowChangePassword(false)}
-                  className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                  disabled={!passwordMatch}
-                >
-                  Update Password
                 </button>
               </div>
             </form>

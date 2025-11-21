@@ -1,22 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Eye, Package, Truck } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Table from '../../components/seller/Table';
+import Layout from '../../components/seller/Layout';
+import Header from "../../components/customer/Header";
+import Footer from "../../components/customer/Footer";
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/formatters';
+import { fetchOrders } from '../../services/seller/orderService';
 
-const mockOrders = [
-  { id: 'ORD-001', customerName: 'A1', customerEmail: 'a1@gmail.com', total: 20299.00, status: 'pending', paymentStatus: 'paid', items: 3, createdAt: '2024-09-15T10:30:00Z' },
-  { id: 'ORD-002', customerName: 'B1', customerEmail: 'b1@gmail.com', total: 10490.00, status: 'shipped', paymentStatus: 'paid', items: 1, createdAt: '2024-09-14T14:22:00Z' },
-  { id: 'ORD-003', customerName: 'C1', customerEmail: 'c1@gamil.com', total: 5799.00, status: 'delivered', paymentStatus: 'paid', items: 2, createdAt: '2024-08-13T09:15:00Z' },
-];
+// TODO: Replace this empty state with a real API call to fetch seller orders.
+// Mock data removed per request.
 
 const Orders = () => {
-  const [orders] = useState(mockOrders);
+  // Orders list is initially empty — mock data removed.
+  // TODO: Fetch orders from seller API and call setOrders(...)
+  const [orders, setOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
 
   const statuses = ['All', 'pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadOrders = async () => {
+      try {
+        const data = await fetchOrders({ state: selectedStatus || undefined, signal: controller.signal });
+        const list = (data?.productOrder || []).map((po) => ({
+          id: po.id,
+          customerName: po?.relatedParty?.find(r => r.role === 'Customer')?.name || 'N/A',
+          customerEmail: po?.relatedParty?.find(r => r.role === 'Customer')?.email || 'N/A',
+          items: po?.orderItem?.length || 0,
+          total: 0,
+          status: po?.state || 'pending',
+          paymentStatus: 'pending',
+          createdAt: po?.orderDate || po?.createdAt || new Date().toISOString(),
+        }));
+        setOrders(list);
+      } catch (e) {
+        if (e.name !== 'CanceledError' && e.name !== 'AbortError') {
+          console.error('Failed to load orders', e);
+        }
+      }
+    };
+
+    loadOrders();
+    return () => controller.abort();
+  }, [selectedStatus]);
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -45,6 +75,9 @@ const Orders = () => {
   ];
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -69,6 +102,9 @@ const Orders = () => {
 
       <Table data={filteredOrders} columns={columns} emptyMessage="No orders found" />
     </div>
+     </Layout>
+    <Footer />
+    </>
   );
 };
 

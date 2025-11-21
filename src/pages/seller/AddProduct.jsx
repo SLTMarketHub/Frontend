@@ -4,7 +4,11 @@ import { ArrowLeft, Upload, X } from 'lucide-react';
 import Card from '../../components/seller/Card';
 import Button from '../../components/seller/Button';
 import { useForm } from '../../hooks/seller/useForm';
+import Layout from '../../components/seller/Layout';
+import Header from '../../components/customer/Header';
+import Footer from '../../components/customer/Footer';
 import toast from 'react-hot-toast';
+import { createProductOffering, createProductOfferingPrice } from '../../services/seller/productService';
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -50,7 +54,29 @@ const AddProduct = () => {
   const onSubmit = async (formData) => {
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const lifecycleMap = {
+        draft: 'InDesign',
+        active: 'Active',
+        inactive: 'Retired'
+      };
+
+      const offering = await createProductOffering({
+        name: formData.name,
+        description: formData.description,
+        categoryName: formData.category,
+        lifecycleStatus: lifecycleMap[formData.status] || 'Active',
+        isSellable: formData.status !== 'inactive',
+        imageUrls
+      });
+
+      if (formData.price > 0) {
+        await createProductOfferingPrice({
+          offeringId: offering.id,
+          amount: Number(formData.price),
+          currency: 'LKR'
+        });
+      }
+
       toast.success('Product created successfully');
       navigate('/products');
     } catch (error) {
@@ -61,6 +87,9 @@ const AddProduct = () => {
   };
 
   return (
+    <>
+    <Header />
+    <Layout>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -162,8 +191,10 @@ const AddProduct = () => {
         </div>
       </form>
     </div>
+     </Layout>
+    <Footer />
+    </>
   );
 };
 
 export default AddProduct;
-

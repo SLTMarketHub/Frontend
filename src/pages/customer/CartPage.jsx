@@ -1,112 +1,229 @@
-import React, { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
-import CartItem from "../../components/customer/cart/CartItem";
-import CartSummary from "../../components/customer/cart/CartSummary";
-import AddressSelector from "../../components/customer/cart/AddressSelector";
-import ShippingOptions from "../../components/customer/cart/ShippingOptions";
-import PaymentMethods from "../../components/customer/cart/PaymentMethods";
+import { useCart } from "../../context/CartContext";
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const goBackHome = () => navigate("/");
-
-  const [cartItems, setCartItems] = useState([
-    { id: 1, name: "Wireless Headphones", price: 120, qty: 1, image: "/assets/headphones.png" },
-    { id: 2, name: "Smart Watch", price: 200, qty: 2, image: "/assets/watch.png" },
-  ]);
-
-  const [promoCode, setPromoCode] = useState("");
-  const [address, setAddress] = useState(null);
-  const [shipping, setShipping] = useState(null);
+  const { cart, removeFromCart, updateCartItemQuantity, clearCart } = useCart();
+  const [selectedItems, setSelectedItems] = useState([]);
   const [payment, setPayment] = useState(null);
 
-  const removeItem = (id) => setCartItems(cartItems.filter((item) => item.id !== id));
-  const updateQuantity = (id, qty) =>
-    setCartItems(cartItems.map((item) => (item.id === id ? { ...item, qty } : item)));
+  // Sync selected items with cart whenever cart changes
+  useEffect(() => {
+    setSelectedItems(cart);
+  }, [cart]);
+
+  // Toggle selection of a cart item
+  const toggleSelectItem = (item) => {
+    if (selectedItems.some((i) => i.productId === item.productId)) {
+      setSelectedItems(selectedItems.filter((i) => i.productId !== item.productId));
+    } else {
+      setSelectedItems([...selectedItems, item]);
+    }
+  };
+
+  // Handle quantity change
+  const handleQuantityChange = (productId, newQty) => {
+    updateCartItemQuantity(productId, newQty);
+  };
+
+  // Handle item removal
+  const handleRemoveItem = (productId) => {
+    removeFromCart(productId);
+  };
+
+  // Calculate totals
+  const subtotal = selectedItems.reduce((sum, item) => {
+    const numericPrice = parseFloat(String(item.price).replace(/[^0-9.]/g, "")) || 0;
+    return sum + numericPrice * (item.quantity || 1);
+  }, 0);
+
+  const total = subtotal;
+
+  // Proceed to checkout
+  const handleCheckout = () => {
+
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    navigate("/checkout", {
+      state: {
+        cartItems: selectedItems,
+        // shipping,
+        // payment,
+        total,
+        customerId: user?.id,
+      },
+    });
+
+    // clearCart();
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      {/* Header */}
       <Header />
-
-      {/* Main content */}
       <main className="container mx-auto px-4 py-8 flex-1 grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left Side */}
         <div className="md:col-span-2 space-y-6">
-          {/* Back to Home Button */}
-          <div className="flex items-center mb-4">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-3xl font-bold text-gray-800">Your Shopping Cart</h2>
             <button
-              onClick={goBackHome}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
+              onClick={() => navigate(-1)}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-4 py-2 rounded-lg"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7 7-7M3 12h18" />
-              </svg>
-              Back to Home
+              ← Go Back
             </button>
           </div>
 
-          <h2 className="text-3xl font-bold text-gray-800 mb-6">Your Shopping Cart</h2>
-
-          {/* Cart Items */}
-          <AnimatePresence>
-            {cartItems.length === 0 ? (
-              <motion.div
-                key="empty-cart"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="text-center text-gray-500 text-lg py-20"
-              >
-                🛒 Your cart is empty. Start shopping!
-              </motion.div>
-            ) : (
-              cartItems.map((item) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  layout
+          {cart.length === 0 ? (
+            <p className="text-gray-500">Your cart is empty.</p>
+          ) : (
+            cart.map((item) => {
+              const numericPrice = parseFloat(String(item.price).replace(/[^0-9.]/g, "")) || 0;
+              return (
+                <div
+                  key={item.productId}
+                  className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200"
                 >
-                  <CartItem
-                    item={item}
-                    removeItem={removeItem}
-                    updateQuantity={updateQuantity}
-                  />
-                </motion.div>
-              ))
-            )}
-          </AnimatePresence>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.some((i) => i.productId === item.productId)}
+                      onChange={() => toggleSelectItem(item)}
+                    />
+                    <div>
+                      <p className="font-semibold text-gray-800">{item.name}</p>
+                      <p className="text-gray-600 text-sm">Rs.{numericPrice.toFixed(2)}</p>
 
-          {/* Checkout Options */}
-          <AddressSelector address={address} setAddress={setAddress} />
-          <ShippingOptions shipping={shipping} setShipping={setShipping} />
-          <PaymentMethods payment={payment} setPayment={setPayment} />
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          onClick={() =>
+                            handleQuantityChange(item.productId, (item.quantity || 1) - 1)
+                          }
+                          className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          value={item.quantity || 1}
+                          min="1"
+                          onChange={(e) =>
+                            handleQuantityChange(item.productId, parseInt(e.target.value) || 1)
+                          }
+                          className="w-12 text-center border border-gray-300 rounded"
+                        />
+                        <button
+                          onClick={() =>
+                            handleQuantityChange(item.productId, (item.quantity || 1) + 1)
+                          }
+                          className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end">
+                    <p className="font-medium text-gray-800 mb-2">
+                      Rs.{(numericPrice * (item.quantity || 1)).toFixed(2)}
+                    </p>
+                    <button
+                      onClick={() => handleRemoveItem(item.productId)}
+                      className="text-red-500 text-sm hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {/* Shipping Options */}
+          {/* <div className="mt-6">
+            <h3 className="font-semibold mb-2">Shipping Options</h3>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="shipping"
+                  value="standard"
+                  checked={shipping === "standard"}
+                  onChange={(e) => setShipping(e.target.value)}
+                />
+                Standard (Rs.300)
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="shipping"
+                  value="express"
+                  checked={shipping === "express"}
+                  onChange={(e) => setShipping(e.target.value)}
+                />
+                Express (Rs.600)
+              </label>
+            </div>
+          </div> */}
+
+          {/* Payment Options */}
+          {/* <div className="mt-6">
+            <h3 className="font-semibold mb-2">Payment Method</h3>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="payment"
+                  value="Cash on Delivery"
+                  checked={payment === "Cash on Delivery"}
+                  onChange={(e) => setPayment(e.target.value)}
+                />
+                Cash on Delivery
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="payment"
+                  value="Card Payment"
+                  checked={payment === "Card Payment"}
+                  onChange={(e) => setPayment(e.target.value)}
+                />
+                Card Payment
+              </label>
+            </div>
+          </div> */}
         </div>
 
-        {/* Right Side - Summary */}
+        {/* Summary */}
         <motion.div
           className="bg-white p-6 rounded-xl shadow-lg sticky top-8 h-fit"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <CartSummary
-            cartItems={cartItems}
-            promoCode={promoCode}
-            setPromoCode={setPromoCode}
-            address={address}
-            shipping={shipping}
-            payment={payment}
-          />
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">Summary</h3>
+          <p className="flex justify-between text-gray-700">
+            <span>Subtotal:</span>
+            <span>Rs.{subtotal.toFixed(2)}</span>
+          </p>
+          <hr className="my-2 border-gray-300" />
+          <p className="flex justify-between font-bold text-lg text-gray-800">
+            <span>Total:</span>
+            <span>Rs.{total.toFixed(2)}</span>
+          </p>
+
+          <button
+            onClick={handleCheckout}
+            className="w-full mt-4 bg-[#0F55A7] hover:bg-[#0d4991] text-white font-semibold py-3 rounded-lg transition-colors"
+          >
+            Proceed to Checkout
+          </button>
         </motion.div>
       </main>
 
-      {/* Footer */}
       <Footer />
     </div>
   );

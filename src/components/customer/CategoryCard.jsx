@@ -7,15 +7,16 @@ export default function CategoryCard({ id, categoryName }) {
     const [loading, setLoading] = useState(true);
     const scrollRef = useRef(null);
 
-    const ENDPOINT = import.meta.env.VITE_ENDPOINT_TMF620_OFFERING;
+    const CATEGORY_ENDPOINT = `${import.meta.env.VITE_ENDPOINT_TMF620_OFFERINGS_BY_CATEGORY}/${id}`;
     const PRICE_ENDPOINT = import.meta.env.VITE_ENDPOINT_TMF620_PRICE;
 
     useEffect(() => {
+        // console.log(id)
+        // console.log(CATEGORY_ENDPOINT)
         const fetchProducts = async () => {
             setLoading(true);
             try {
-                // Fetch all offerings
-                const res = await fetch(`${ENDPOINT}?limit=100`);
+                const res = await fetch(`${CATEGORY_ENDPOINT}?limit=15`);
                 const data = await res.json();
 
                 if (!Array.isArray(data?.data)) {
@@ -23,22 +24,9 @@ export default function CategoryCard({ id, categoryName }) {
                     return;
                 }
 
-                // Filter products for this category
-                const filtered = data.data.filter((product) => {
-                    if (!product.category) return false;
-
-                    if (Array.isArray(product.category)) {
-                        return product.category.some(c => c.id === id || c === id);
-                    } else if (typeof product.category === "object") {
-                        return product.category.id === id;
-                    } else {
-                        return product.category === id;
-                    }
-                });
-
                 // Fetch prices in parallel
                 const productsWithPrices = await Promise.all(
-                    filtered.map(async (product) => {
+                    data.data.map(async (product) => {
                         if (product.productOfferingPrice?.length) {
                             try {
                                 const priceId = product.productOfferingPrice[0].id;
@@ -70,7 +58,7 @@ export default function CategoryCard({ id, categoryName }) {
 
                 setProducts(productsWithPrices);
             } catch (err) {
-                console.error("Error fetching offerings:", err);
+                console.error("Error fetching category offerings:", err);
                 setProducts([]);
             } finally {
                 setLoading(false);
@@ -78,7 +66,7 @@ export default function CategoryCard({ id, categoryName }) {
         };
 
         fetchProducts();
-    }, [id, ENDPOINT, PRICE_ENDPOINT]);
+    }, [id, CATEGORY_ENDPOINT, PRICE_ENDPOINT]);
 
     const scroll = (direction) => {
         if (!scrollRef.current) return;
