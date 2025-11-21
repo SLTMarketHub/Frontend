@@ -15,7 +15,9 @@ Charts
 Export Report - CSV/PDF functionality
 */
 
-import { axiosInstance } from "../../services/axiosInstance";
+import { axiosInstance } from "../axiosInstance";
+import { API_ENDPOINTS } from "../../utils/constants";
+import { PRODUCT_PLACEHOLDER } from "../../utils/imageUtils";
 
 // Get date range based on period (monthly/weekly)
 const getDateRange = (period = "monthly") => {
@@ -256,7 +258,7 @@ export const getTopProducts = async (period = "monthly") => {
               revenue: 0, // Would need price data
               category: "General",
               stock: Math.floor(Math.random() * 150), // Mock stock data
-              image: "https://via.placeholder.com/50",
+              image: PRODUCT_PLACEHOLDER,
             };
           }
           productSales[productId].sales += quantity;

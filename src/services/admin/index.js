@@ -11,6 +11,9 @@ import tmf681AdminService from './tmf681AdminService';
 import userManagementService from './userManagement';
 import * as analyticsService from './annalytics';
 import * as dashboardService from './dashboard';
+import * as sellersService from './sellers';
+import * as productsService from './products';
+import * as ordersService from './orders';
 
 // Re-export individual services for named imports
 export {
@@ -23,7 +26,10 @@ export {
   tmf681AdminService,
   userManagementService,
   analyticsService,
-  dashboardService
+  dashboardService,
+  sellersService,
+  productsService,
+  ordersService
 };
 
 // Export all admin services as a single object for convenience
@@ -37,7 +43,10 @@ const adminServices = {
   communication: tmf681AdminService,
   userManagement: userManagementService,
   analytics: analyticsService,
-  dashboard: dashboardService
+  dashboard: dashboardService,
+  sellers: sellersService,
+  products: productsService,
+  orders: ordersService
 };
 
 export default adminServices;

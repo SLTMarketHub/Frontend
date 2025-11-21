@@ -40,17 +40,8 @@ import Modal, { ConfirmModal } from '../../components/common/Modal';
 import { LoadingState } from '../../components/common/LoadingSpinner';
 import { formatCurrency, formatDate, getStatusColor, formatNumber, getRelativeTime } from '../../utils/formatters';
 import useToast from '../../hooks/useToast';
-import { tmf622AdminService, tmf681AdminService, tmf678AdminService } from '../../services/admin';
+import { ordersService } from '../../services/admin';
 import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
-
-const dummyOrders = [
-  { id: '#ORD-101', customer: "Michael Scott", seller: "John Doe", date: "2025-03-20", status: "pending", amount: 120000 },
-  { id: '#ORD-102', customer: "Pam Beesly", seller: "Jane Smith", date: "2025-03-18", status: "delivered", amount: 95500 },
-  { id: '#ORD-103', customer: "Jim Halpert", seller: "Alice Johnson", date: "2025-03-19", status: "disputed", amount: 75250 },
-  { id: '#ORD-104', customer: "Dwight Schrute", seller: "John Doe", date: "2025-03-21", status: "refunded", amount: 150000 },
-  { id: '#ORD-105', customer: "Stanley Hudson", seller: "Tech Store", date: "2025-03-17", status: "shipped", amount: 234000 },
-  { id: '#ORD-106', customer: "Angela Martin", seller: "Fashion Hub", date: "2025-03-16", status: "confirmed", amount: 67800 },
-];
 
 export default function Orders() {
   const [loading, setLoading] = useState(true);
@@ -80,63 +71,19 @@ export default function Orders() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const params = {
-        limit: 100,
-        offset: 0,
-        ...(statusFilter !== 'all' && { state: statusFilter }),
-        ...(dateFrom && { 'orderDate.gte': dateFrom }),
-        ...(dateTo && { 'orderDate.lte': dateTo }),
-        ...(searchTerm && { search: searchTerm })
-      };
-
-      const [ordersResponse, statsData] = await Promise.all([
-        tmf622AdminService.listProductOrders(params),
-        tmf622AdminService.getOrderStatistics({ period: 'month' })
+      const [ordersData, statsData] = await Promise.all([
+        ordersService.getAllOrders(),
+        ordersService.getOrdersStats()
       ]);
 
-      // Format orders for display
-      const formattedOrders = ordersResponse.map(order => ({
-        id: order.id || `#ORD-${Math.random().toString(36).substr(2, 9)}`,
-        orderNumber: order.externalId || order.id,
-        customer: order.relatedParty?.find(p => p.role === 'customer')?.name || 'Unknown Customer',
-        customerId: order.relatedParty?.find(p => p.role === 'customer')?.id,
-        seller: order.relatedParty?.find(p => p.role === 'seller')?.name || 'Unknown Seller',
-        sellerId: order.relatedParty?.find(p => p.role === 'seller')?.id,
-        date: order.orderDate || new Date().toISOString(),
-        orderDate: order.orderDate || new Date().toISOString(),
-        status: order.state || 'pending',
-        amount: order.totalOrderPrice?.reduce((sum, price) => sum + (price.price?.value || 0), 0) || 0,
-        total: order.totalOrderPrice?.reduce((sum, price) => sum + (price.price?.value || 0), 0) || 0,
-        paymentStatus: order.payment?.[0]?.status || 'pending',
-        items: order.productOrderItem || [],
-        shippingAddress: order.deliveryAddress,
-        billingAddress: order.billingAddress
-      }));
-
-      setOrders(formattedOrders);
+      setOrders(ordersData);
       setOrderStats(statsData);
-      
-      // Fetch disputes from cancelled orders
-      const cancelledOrders = await tmf622AdminService.listCancelProductOrders({ limit: 20 });
-      const disputedOrders = cancelledOrders.filter(o => o.cancellationReason?.includes('dispute'));
-      setDisputes(disputedOrders.map(d => ({
-        id: d.id,
-        orderId: d.productOrder?.id,
-        reason: d.cancellationReason,
-        date: d.requestedCancellationDate,
-        status: d.state
-      })));
+      setDisputes(ordersData.filter(o => o.status === 'disputed'));
     } catch (err) {
       console.error('Error fetching orders:', err);
-      // Use mock data as fallback
-      setOrders(dummyOrders);
-      setOrderStats({
-        totalOrders: dummyOrders.length,
-        pendingOrders: dummyOrders.filter(o => o.status === 'pending').length,
-        completedOrders: dummyOrders.filter(o => o.status === 'delivered').length,
-        disputedOrders: dummyOrders.filter(o => o.status === 'disputed').length,
-        totalRevenue: dummyOrders.reduce((sum, o) => sum + o.amount, 0)
-      });
+      showError('Failed to load orders');
+      setOrders([]);
+      setOrderStats({ total: 0, pending: 0, completed: 0, cancelled: 0, totalRevenue: 0 });
     } finally {
       setLoading(false);
     }
@@ -144,76 +91,19 @@ export default function Orders() {
 
   const handleUpdateOrderStatus = async () => {
     try {
-      await tmf622AdminService.updateProductOrder(selectedOrder.id, {
-        state: statusUpdateData.status,
-        note: [{
-          text: statusUpdateData.reason,
-          date: new Date().toISOString(),
-          author: 'Admin'
-        }]
-      });
-
-      // Send notification using admin service
-      await tmf681AdminService.createMessage({
-        sender: {
-          id: 'admin',
-          name: 'Platform Admin',
-          '@type': 'Organization'
-        },
-        receiver: [{
-          id: selectedOrder.customerId,
-          name: selectedOrder.customer,
-          '@type': 'Individual'
-        }],
-        communicationType: 'order_status_update',
-        subject: `Order ${selectedOrder.id} Status Update`,
-        content: `Your order status has been updated to ${statusUpdateData.status}`,
-        channel: ['email'],
-        priority: 'normal',
-        status: 'pending'
-      });
-
+      await ordersService.updateOrderStatus(selectedOrder.id, statusUpdateData.status);
       success('Order status updated successfully');
       setShowStatusUpdateModal(false);
       fetchOrders();
     } catch (err) {
+      console.error('Error updating order status:', err);
       showError('Failed to update order status');
     }
   };
 
   const handleProcessRefund = async () => {
     try {
-      // Create a cancel order request for refund
-      await tmf622AdminService.createCancelProductOrder({
-        productOrder: {
-          id: selectedOrder.id,
-          href: `/productOrder/${selectedOrder.id}`
-        },
-        cancellationReason: refundData.reason,
-        requestedCancellationDate: new Date().toISOString(),
-        state: 'acknowledged',
-        '@type': 'CancelProductOrder'
-      });
-      
-      // Create a customer bill adjustment for refund
-      if (refundData.type === 'full') {
-        await tmf678AdminService.createCustomerBill({
-          billNo: `REFUND-${selectedOrder.id}`,
-          billDate: new Date().toISOString(),
-          amountDue: { value: -refundData.amount, unit: 'LKR' },
-          relatedParty: [{
-            id: selectedOrder.customerId,
-            name: selectedOrder.customer,
-            role: 'customer'
-          }],
-          billDocument: [{
-            name: 'Refund Document',
-            description: refundData.reason,
-            '@type': 'BillDocument'
-          }]
-        });
-      }
-      
+      await ordersService.processRefund(selectedOrder.id, refundData.amount, refundData.reason);
       success('Refund processed successfully');
       setShowRefundModal(false);
       fetchOrders();
@@ -225,28 +115,12 @@ export default function Orders() {
 
   const handleResolveDispute = async () => {
     try {
-      // Update the order status based on dispute resolution
-      await tmf622AdminService.updateProductOrder(selectedDispute.orderId, {
-        state: disputeResolution.decision === 'refund' ? 'cancelled' : 'completed',
-        note: [{
-          text: `Dispute resolved: ${disputeResolution.notes}`,
-          date: new Date().toISOString(),
-          author: 'Admin'
-        }]
-      });
+      const resolution = `Dispute resolved: ${disputeResolution.notes}`;
+      await ordersService.resolveDispute(selectedDispute.orderId, resolution);
       
       // Process refund if needed
       if (disputeResolution.decision === 'refund' && disputeResolution.refundAmount > 0) {
-        await tmf678AdminService.createCustomerBill({
-          billNo: `DISPUTE-REFUND-${selectedDispute.id}`,
-          billDate: new Date().toISOString(),
-          amountDue: { value: -disputeResolution.refundAmount, unit: 'LKR' },
-          relatedParty: [{
-            id: selectedDispute.customerId,
-            name: selectedDispute.customerName,
-            role: 'customer'
-          }]
-        });
+        await ordersService.processRefund(selectedDispute.orderId, disputeResolution.refundAmount, resolution);
       }
       
       success('Dispute resolved successfully');
