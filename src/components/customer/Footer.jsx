@@ -15,8 +15,8 @@ export default function Footer() {
         <div>
           <h3 className="text-lg font-semibold text-white mb-3">Hello Seller</h3>
           <ul className="space-y-2 text-sm">
-            <li><a href="/loginOthers" className="hover:text-white">Seller Sign In</a></li>
-            <li><a href="/registerOthers" className="hover:text-white">Sign Up as a Seller</a></li>
+            <li><a href="/loginSellers" className="hover:text-white">Seller Sign In</a></li>
+            <li><a href="/registerSellers" className="hover:text-white">Sign Up as a Seller</a></li>
             <li><a href="/" className="hover:text-white">About MarketHub</a></li>
             <li><a href="/" className="hover:text-white">Contact</a></li>
           </ul>

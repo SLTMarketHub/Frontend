@@ -12,7 +12,7 @@ const GoogleSuccess = () => {
     const [loading, setLoading] = useState(false);
 
     // ✅ Backend URL (change if needed)
-    const backendUrl = import.meta.env.VITE_ENDPOINT_AUTH || "http://localhost:5000/api/auth";
+    const backendUrl = import.meta.env.VITE_ENDPOINT_AUTH || "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);

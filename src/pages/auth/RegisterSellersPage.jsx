@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 
-const RegisterOthersPage = () => {
+const RegisterSellersPage = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         username: "",
         email: "",
         password: "",
         confirmPassword: "",
-        role: "",
+        role: "Partner",
     });
 
     const [loading, setLoading] = useState(false);
@@ -18,8 +19,11 @@ const RegisterOthersPage = () => {
     const [passwordStrength, setPasswordStrength] = useState(0);
     const [passwordStrengthLabel, setPasswordStrengthLabel] = useState("");
 
-    const backendUrl =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
+    // ✅ Password visibility state
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    const backendUrl = "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -71,7 +75,7 @@ const RegisterOthersPage = () => {
         setMessage("");
 
         try {
-            if (!formData.role) formData.role = "Customer";
+            if (!formData.role) formData.role = "Partner";
             navigate(
                 `/complete-signup?email=${encodeURIComponent(
                     formData.email
@@ -92,7 +96,7 @@ const RegisterOthersPage = () => {
         <div className="fixed inset-0 flex items-center justify-center overflow-hidden z-50 animated-gradient-bg">
             <div className="relative w-[95%] max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 p-8 animate-fadeIn">
                 <button
-                   onClick={() => navigate("/home")}
+                    onClick={() => navigate("/home")}
                     className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-lg"
                 >
                     ✕
@@ -109,10 +113,9 @@ const RegisterOthersPage = () => {
                         Sign Up as a Seller
                     </h1>
                     <p className="text-center text-gray-500 mb-6">
-                    Join MarketHub and sell your telecommunication products easily.
-                </p>
+                        Join MarketHub and sell your telecommunication products easily.
+                    </p>
                 </div>
-                
 
                 {message && (
                     <div className="mb-3 text-sm text-red-600 text-center">{message}</div>
@@ -139,14 +142,24 @@ const RegisterOthersPage = () => {
                         required
                     />
 
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="Password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="w-full p-3 border border-gray-300 rounded-lg mb-1 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                    />
+                    {/* Password input with show/hide */}
+                    <div className="relative mb-1">
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            placeholder="Password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            className="w-full pr-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+                        >
+                            {showPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
+                        </button>
+                    </div>
 
                     {/* Password Strength Bar */}
                     <div className="w-full h-2 bg-gray-200 rounded mb-2">
@@ -178,16 +191,26 @@ const RegisterOthersPage = () => {
                         </p>
                     )}
 
-                    <input
-                        type="password"
-                        name="confirmPassword"
-                        placeholder="Confirm Password"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        className={`w-full p-3 border rounded-lg mb-1 ${
-                            passwordError ? "border-red-500" : "border-gray-300"
-                        } focus:ring-2 focus:ring-blue-400 focus:outline-none`}
-                    />
+                    {/* Confirm Password input with show/hide */}
+                    <div className="relative mb-1">
+                        <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            name="confirmPassword"
+                            placeholder="Confirm Password"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            className={`w-full pr-10 p-3 border rounded-lg ${
+                                passwordError ? "border-red-500" : "border-gray-300"
+                            } focus:ring-2 focus:ring-blue-400 focus:outline-none`}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+                        >
+                            {showConfirmPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
+                        </button>
+                    </div>
 
                     {passwordError && (
                         <p className="text-red-500 text-sm mb-3">{passwordError}</p>
@@ -209,7 +232,7 @@ const RegisterOthersPage = () => {
                 <p className="text-sm text-center mt-5 text-gray-600">
                     Already have an account?{" "}
                     <Link
-                        to="/loginOthers"
+                        to="/loginSellers"
                         className="text-blue-600 font-semibold hover:underline"
                     >
                         Sign In
@@ -220,15 +243,9 @@ const RegisterOthersPage = () => {
             {/* Animated gradient background */}
             <style jsx="true">{`
                 @keyframes gradientFlow {
-                    0% {
-                        background-position: 0% 50%;
-                    }
-                    50% {
-                        background-position: 100% 50%;
-                    }
-                    100% {
-                        background-position: 0% 50%;
-                    }
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
                 }
 
                 .animated-gradient-bg {
@@ -242,18 +259,12 @@ const RegisterOthersPage = () => {
                 }
 
                 @keyframes fadeIn {
-                    from {
-                        opacity: 0;
-                        transform: scale(0.97);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
+                    from { opacity: 0; transform: scale(0.97); }
+                    to { opacity: 1; transform: scale(1); }
                 }
             `}</style>
         </div>
     );
 };
 
-export default RegisterOthersPage;
+export default RegisterSellersPage;

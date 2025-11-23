@@ -4,9 +4,9 @@ import { useAuth } from "./context/AuthContext.jsx";
 
 // ✅ Auth pages
 import RegisterPage from "./pages/auth/RegisterPage.jsx";
-import RegisterOthersPage from "./pages/auth/RegisterOthersPage.jsx";
+import RegisterSellersPage from "./pages/auth/RegisterSellersPage.jsx";
 import LoginPage from "./pages/auth/LoginPage.jsx";
-import LoginOthersPage from "./pages/auth/LoginOthersPage.jsx";
+import LoginSellersPage from "./pages/auth/LoginSellersPage.jsx";
 import CompleteSignupPage from "./pages/auth/CompleteSignUpPage.jsx";
 import GoogleSuccess from "./pages/auth/GoogleSuccessPage.jsx";
 import GoogleCallback from "./pages/auth/GoogleCallbackPage.jsx";
@@ -58,21 +58,21 @@ function App() {
         <Routes>
             {/* 🔹 Default route */}
             <Route path="/" element={<Navigate to="/home" replace />} />
-            
+
             {/* 🔹 Auth routes */}
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/registerOthers" element={<RegisterOthersPage />} />
+            <Route path="/registerSellers" element={<RegisterSellersPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/loginOthers" element={<LoginOthersPage />} />
+            <Route path="/loginSellers" element={<LoginSellersPage />} />
             <Route path="/complete-signup" element={<CompleteSignupPage />} />
             <Route path="/auth/google/success" element={<GoogleSuccess />} />
             <Route path="/google-callback" element={<GoogleCallback />} />
-            
+
             {/* 🔹 Customer routes (public) */}
             <Route path="/home" element={<HomePage />} />
             <Route path="/category/:categoryId" element={<ProductCategory />} />
             <Route path="/product/:id" element={<ProductPage />} />
-            
+
             {/* 🔹 Protected Customer routes */}
             <Route
                 path="/cart"
@@ -225,7 +225,7 @@ function App() {
                 <Route path="settings" element={<Settings />} />
                 <Route path="support" element={<Support />} />
             </Route>
-              
+
             {/* 🔹 Fallback */}
             <Route path="*" element={<NotFoundPage />} />
         </Routes>

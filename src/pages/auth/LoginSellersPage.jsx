@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
+import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { useAuth } from "../../context/AuthContext.jsx";
 
-const LoginOthersPage = () => {
+const LoginSellersPage = () => {
     const navigate = useNavigate();
     const { setAuthUser } = useAuth();
 
@@ -14,8 +15,10 @@ const LoginOthersPage = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
 
-    const backend_url =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
+    // ✅ Password visibility state
+    const [showPassword, setShowPassword] = useState(false);
+
+    const backend_url = "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -48,9 +51,9 @@ const LoginOthersPage = () => {
                     token: data.token,
                 });
 
-                if (mappedRole === "partner") navigate("/partner");
-                else if (mappedRole === "customer") navigate("/dashboard");
-                else if (mappedRole === "admin") navigate("/admin");
+                if (mappedRole === "partner") navigate("/dashboard");
+                else if (mappedRole === "customer") navigate("/home");
+                else if (mappedRole === "admin") navigate("/admin/dashboard");
                 else navigate("/");
             } else {
                 setMessage(data.message || "Invalid credentials");
@@ -83,8 +86,6 @@ const LoginOthersPage = () => {
                     </h1>
                 </div>
 
-
-
                 {message && (
                     <div className="mb-3 text-sm text-red-600 text-center">{message}</div>
                 )}
@@ -105,19 +106,26 @@ const LoginOthersPage = () => {
                         />
                     </div>
 
-                    <div>
+                    <div className="relative">
                         <label className="block text-sm font-medium text-black-700 dark:text-black-200 mb-1">
                             Password
                         </label>
                         <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             name="password"
                             placeholder="••••••••"
                             value={formData.password}
                             onChange={handleChange}
                             required
-                            className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                            className="w-full pr-10 p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-[58%] transform -translate-y-1/2 text-gray-600"
+                        >
+                            {showPassword ? <AiFillEyeInvisible/> : <AiFillEye/>}
+                        </button>
                     </div>
 
                     <button
@@ -132,7 +140,7 @@ const LoginOthersPage = () => {
                 <p className="text-sm text-center mt-5 text-gray-600">
                     Don’t have an account?{" "}
                     <Link
-                        to="/registerOthers"
+                        to="/registerSellers"
                         className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
                     >
                         Sign Up
@@ -143,15 +151,9 @@ const LoginOthersPage = () => {
             {/* Animated gradient background */}
             <style jsx="true">{`
                 @keyframes gradientFlow {
-                    0% {
-                        background-position: 0% 50%;
-                    }
-                    50% {
-                        background-position: 100% 50%;
-                    }
-                    100% {
-                        background-position: 0% 50%;
-                    }
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
                 }
 
                 .animated-gradient-bg {
@@ -165,18 +167,12 @@ const LoginOthersPage = () => {
                 }
 
                 @keyframes fadeIn {
-                    from {
-                        opacity: 0;
-                        transform: scale(0.97);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
+                    from { opacity: 0; transform: scale(0.97); }
+                    to { opacity: 1; transform: scale(1); }
                 }
             `}</style>
         </div>
     );
 };
 
-export default LoginOthersPage;
+export default LoginSellersPage;

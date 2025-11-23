@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
+import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 
 const RegisterPage = () => {
     const navigate = useNavigate();
@@ -9,7 +10,7 @@ const RegisterPage = () => {
         email: "",
         password: "",
         confirmPassword: "",
-        role: "",
+        role: "Customer",
     });
 
     const [loading, setLoading] = useState(false);
@@ -19,14 +20,16 @@ const RegisterPage = () => {
     const [passwordStrength, setPasswordStrength] = useState(0);
     const [passwordStrengthLabel, setPasswordStrengthLabel] = useState("");
 
-    const backendUrl =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
+    // ✅ Password visibility state
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    const backendUrl = "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         const updatedForm = { ...formData, [name]: value };
         setFormData(updatedForm);
-
 
         let errorMsg = "";
         if (name === "password") errorMsg = validatePassword(value);
@@ -44,8 +47,6 @@ const RegisterPage = () => {
         setIsSubmitDisabled(
             !(updatedForm.password && updatedForm.confirmPassword && errorMsg === "")
         );
-
-
     };
 
     const validatePassword = (password) => {
@@ -55,7 +56,6 @@ const RegisterPage = () => {
         if (/[0-9]/.test(password)) score++;
         if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
         setPasswordStrength(score);
-
 
         if (score <= 1) {
             setPasswordStrengthLabel("Weak");
@@ -68,15 +68,12 @@ const RegisterPage = () => {
             return "";
         }
         return "";
-
-
     };
 
     const handleSignup = async (e) => {
         e.preventDefault();
         setLoading(true);
         setMessage("");
-
 
         try {
             if (!formData.role) formData.role = "Customer";
@@ -94,8 +91,6 @@ const RegisterPage = () => {
         } finally {
             setLoading(false);
         }
-
-
     };
 
     const handleGoogleSignUp = () => {
@@ -125,7 +120,6 @@ const RegisterPage = () => {
                     </h1>
                 </div>
 
-
                 {message && (
                     <div className="mb-3 text-sm text-red-600 text-center">{message}</div>
                 )}
@@ -151,52 +145,72 @@ const RegisterPage = () => {
                         required
                     />
 
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="Password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="w-full p-3 border border-gray-300 rounded-lg mb-1 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                    />
+                    {/* Password input with show/hide */}
+                    <div className="relative mb-1">
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            placeholder="Password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            className="w-full pr-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+                        >
+                            {showPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
+                        </button>
+                    </div>
 
                     {/* Password Strength Bar */}
                     <div className="w-full h-2 bg-gray-200 rounded mb-2">
                         <div
                             className={`h-2 rounded ${passwordStrength <= 1
-                                    ? "bg-red-500 w-1/4"
-                                    : passwordStrength === 2
-                                        ? "bg-yellow-500 w-2/4"
-                                        : passwordStrength === 3
-                                            ? "bg-blue-500 w-3/4"
-                                            : "bg-green-500 w-full"
-                                }`}
+                                ? "bg-red-500 w-1/4"
+                                : passwordStrength === 2
+                                    ? "bg-yellow-500 w-2/4"
+                                    : passwordStrength === 3
+                                        ? "bg-blue-500 w-3/4"
+                                        : "bg-green-500 w-full"
+                            }`}
                         ></div>
                     </div>
                     {passwordStrengthLabel && (
                         <p
                             className={`text-sm mb-3 ${passwordStrength <= 1
-                                    ? "text-red-500"
-                                    : passwordStrength === 2
-                                        ? "text-yellow-600"
-                                        : passwordStrength === 3
-                                            ? "text-blue-600"
-                                            : "text-green-600"
-                                }`}
+                                ? "text-red-500"
+                                : passwordStrength === 2
+                                    ? "text-yellow-600"
+                                    : passwordStrength === 3
+                                        ? "text-blue-600"
+                                        : "text-green-600"
+                            }`}
                         >
                             Strength: {passwordStrengthLabel}
                         </p>
                     )}
 
-                    <input
-                        type="password"
-                        name="confirmPassword"
-                        placeholder="Confirm Password"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        className={`w-full p-3 border rounded-lg mb-1 ${passwordError ? "border-red-500" : "border-gray-300"
+                    {/* Confirm Password input with show/hide */}
+                    <div className="relative mb-1">
+                        <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            name="confirmPassword"
+                            placeholder="Confirm Password"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            className={`w-full pr-10 p-3 border rounded-lg ${passwordError ? "border-red-500" : "border-gray-300"
                             } focus:ring-2 focus:ring-blue-400 focus:outline-none`}
-                    />
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+                        >
+                            {showConfirmPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
+                        </button>
+                    </div>
 
                     {passwordError && (
                         <p className="text-red-500 text-sm mb-3">{passwordError}</p>
@@ -206,9 +220,9 @@ const RegisterPage = () => {
                         type="submit"
                         disabled={loading || isSubmitDisabled}
                         className={`w-full mt-2.5 md:mt-4 text-white py-3 rounded-lg font-semibold shadow-md transition duration-200 ${loading || isSubmitDisabled
-                                ? "bg-gray-400 cursor-not-allowed"
-                                : "bg-blue-600 hover:bg-blue-700 transition-all duration-200"
-                            }`}
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                        }`}
                     >
                         {loading ? "Requesting OTP..." : "Sign Up"}
                     </button>
@@ -240,18 +254,13 @@ const RegisterPage = () => {
                     </Link>
                 </p>
             </div>
+
             {/* Animated gradient background */}
             <style jsx="true">{`
                 @keyframes gradientFlow {
-                    0% {
-                        background-position: 0% 50%;
-                    }
-                    50% {
-                        background-position: 100% 50%;
-                    }
-                    100% {
-                        background-position: 0% 50%;
-                    }
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
                 }
 
                 .animated-gradient-bg {
@@ -265,18 +274,11 @@ const RegisterPage = () => {
                 }
 
                 @keyframes fadeIn {
-                    from {
-                        opacity: 0;
-                        transform: scale(0.97);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
+                    from { opacity: 0; transform: scale(0.97); }
+                    to { opacity: 1; transform: scale(1); }
                 }
             `}</style>
         </div>
-
     );
 };
 

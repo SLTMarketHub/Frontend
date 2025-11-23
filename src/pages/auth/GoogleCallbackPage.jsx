@@ -11,7 +11,7 @@ const GoogleCallback = () => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
     const username = params.get("username");
-    const roleFromUrl = params.get("role"); // e.g. ?role=seller or ?role=customer
+    const roleFromUrl = params.get("role");
 
     if (token && username) {
       const decoded = jwtDecode(token);
@@ -45,7 +45,7 @@ const GoogleCallback = () => {
       );
 
       // Redirect based on role
-      if (userRole === "seller") {
+      if (userRole === "partner" || "Partner") {
         navigate("/dashboard");
       } else {
         navigate("/home");

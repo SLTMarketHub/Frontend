@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, {useState, useEffect, useRef} from "react";
 import {useSearchParams, useNavigate, Link} from "react-router-dom";
 
 const CompleteSignupPage = () => {
@@ -8,6 +8,7 @@ const CompleteSignupPage = () => {
     const initialEmail = searchParams.get("email") || "";
     const initialUsername = searchParams.get("username") || "";
     const initialpw = searchParams.get("password") || "";
+    const initialRole = searchParams.get("role") || "";
     const googleToken = searchParams.get("token") || "";
     const fromGoogle = !!googleToken;
 
@@ -17,12 +18,20 @@ const CompleteSignupPage = () => {
         username: initialUsername,
         email: initialEmail,
         password: initialpw,
-        role: "Customer",
+        role: initialRole,
         otp: "",
     });
 
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
+
+    const otpInputRef = useRef(null);
+
+    // Focus on input when page loads
+    useEffect(() => {
+        otpInputRef.current?.focus();
+    }, []);
+
 
     const backendUrl =
         "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
@@ -83,7 +92,7 @@ const CompleteSignupPage = () => {
                     username,
                     email,
                     password,
-                    role: "Customer",
+                    role:initialRole,
                     otp,
                     google: fromGoogle,
                 }),
@@ -96,10 +105,15 @@ const CompleteSignupPage = () => {
 
                 localStorage.setItem(
                     "user",
-                    JSON.stringify(data.user || { username, email, role: "Customer" })
+                    JSON.stringify(data.user || { username, email, role:initialRole })
                 );
 
-                navigate("/login");
+                if(initialRole === "Customer"){
+                    navigate("/login");
+                } else if (initialRole === "Partner" || "Admin") {
+                    navigate("/loginSellers");
+                }
+
             } else {
                 setMessage(data.message || "Signup failed");
             }
@@ -180,6 +194,7 @@ const CompleteSignupPage = () => {
                             placeholder="Enter OTP"
                             value={formData.otp}
                             onChange={handleChange}
+                            ref={otpInputRef}
                             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500"
                         />
 
@@ -200,16 +215,6 @@ const CompleteSignupPage = () => {
                         </button>
                     </div>
                 )}
-
-                <p className="text-sm text-center mt-5 text-gray-600">
-                    Already have an account?{" "}
-                    <Link
-                        to="/login"
-                        className="text-blue-600 font-semibold hover:underline"
-                    >
-                        Sign In
-                    </Link>
-                </p>
             </div>
         </div>
     );

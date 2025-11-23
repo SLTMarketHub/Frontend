@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
+import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const LoginPage = () => {
@@ -13,10 +14,9 @@ const LoginPage = () => {
     });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
-    const backend_url =
-        "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
-
+    const backend_url = "https://markethub-api-gateway.onrender.com/tmf-api/authService/auth";
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -49,9 +49,9 @@ const LoginPage = () => {
                     token: data.token,
                 });
 
-                if (mappedRole === "partner") navigate("/partner");
-                else if (mappedRole === "customer") navigate("/dashboard");
-                else if (mappedRole === "admin") navigate("/admin");
+                if (mappedRole === "partner") navigate("/dashboard");
+                else if (mappedRole === "customer") navigate("/home");
+                else if (mappedRole === "admin") navigate("/admin/dashboard");
                 else navigate("/");
             } else {
                 setMessage(data.message || "Invalid credentials");
@@ -110,20 +110,27 @@ const LoginPage = () => {
                         />
                     </div>
 
-                    <div>
+                    <div className="relative">
                         <label className="block text-sm font-medium text-black-700 dark:text-black-200 mb-1">
                             Password
                         </label>
                         <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             name="password"
                             placeholder="••••••••"
                             value={formData.password}
                             onChange={handleChange}
                             required
                             autoComplete="current-password"
-                            className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                            className="w-full pr-10 p-3 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-[58%] transform -translate-y-1/2 text-gray-600"
+                        >
+                            {showPassword ? <AiFillEyeInvisible size={22} /> : <AiFillEye size={22} />}
+                        </button>
                     </div>
 
                     <button
@@ -161,6 +168,7 @@ const LoginPage = () => {
                     </Link>
                 </p>
             </div>
+
             {/* Animated gradient background */}
             <style jsx="true">{`
                 @keyframes gradientFlow {
