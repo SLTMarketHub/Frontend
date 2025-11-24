@@ -2,15 +2,17 @@ import { api, upload } from './api';
 
 // TMF620 base paths through API Gateway
 const TMF620_BASE = 'https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5';
-const OFFERING_PATH = "https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5/productOffering";
-const PRICE_PATH = "https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5/productOfferingPrice";
+const OFFERING_PATH = `${TMF620_BASE}/productOffering`;
+const PRICE_PATH = `${TMF620_BASE}/productOfferingPrice`;
+const CATEGORY_PATH = `${TMF620_BASE}/category`;
 
 // Utilities
 const generateId = (prefix) => `${prefix}-${Date.now()}`;
 
-export async function listProductOfferings({ offset = 0, limit = 50, name = '' } = {}) {
+export async function listProductOfferings({ offset = 0, limit = 50, name = '', categoryId = '' } = {}) {
   const params = { offset, limit };
   if (name) params.name = name;
+  if (categoryId) params['category.id'] = categoryId;
   params.fields = 'id,name,description,lifecycleStatus,createdAt,productOfferingPrice,category,attachment';
   const { data } = await api.get(OFFERING_PATH, { params });
   return data; // { data: [...], pagination: {...} }
@@ -19,18 +21,23 @@ export async function listProductOfferings({ offset = 0, limit = 50, name = '' }
 export async function getProductOffering(id) {
   const params = { fields: 'id,name,description,lifecycleStatus,productOfferingPrice,category,attachment,createdAt' };
   const { data } = await api.get(`${OFFERING_PATH}/${id}`, { params });
-  return api.get('https://markethub-api-gateway.onrender.com/tmf-api/productCatalog/v5/productOffering', { params })
+  return data;
 }
 
-export async function createProductOffering({ name, description, categoryName, lifecycleStatus = 'Active', isSellable = true, images = [], imageUrls = [] }) {
-  const id = generateId('OFF');
+export async function createProductOffering({ id, name, description, categoryId, categoryName, lifecycleStatus = 'Active', isSellable = true, images = [], imageUrls = [] }) {
+  if (!id) {
+    throw new Error('Product ID is required when creating a product offering.');
+  }
   const body = {
     id,
     name,
     description,
     lifecycleStatus,
     isSellable,
-    category: categoryName ? [{ name: categoryName }] : [],
+    category: categoryId || categoryName ? [{
+      ...(categoryId ? { id: categoryId } : {}),
+      ...(categoryName ? { name: categoryName } : {})
+    }] : [],
     attachment: []
   };
 
@@ -60,6 +67,33 @@ export async function updateProductOffering(id, updates) {
 
 export async function deleteProductOffering(id) {
   await api.delete(`${OFFERING_PATH}/${id}`);
+}
+
+// Category helpers
+export async function listCategories({ offset = 0, limit = 100, name = '' } = {}) {
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  const params = { offset, limit: safeLimit };
+  if (name) params.name = name;
+  params.fields = 'id,name,description,lifecycleStatus';
+  const { data } = await api.get(CATEGORY_PATH, { params });
+  return data; // { data: [...], pagination: {...} }
+}
+
+export async function createCategory({ id, name, description = '', lifecycleStatus = 'Active', parentId, isRoot = false }) {
+  if (!id || !name) {
+    throw new Error('Category id and name are required.');
+  }
+  const body = {
+    id,
+    name,
+    description,
+    lifecycleStatus,
+    parentId,
+    isRoot,
+    href: `${CATEGORY_PATH}/${id}`
+  };
+  const { data } = await api.post(CATEGORY_PATH, body);
+  return data;
 }
 
 export async function uploadOfferingImage(id, file) {

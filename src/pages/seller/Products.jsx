@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Eye, Edit, Trash2 } from 'lucide-react';
 import Card from '../../components/seller/Card';
@@ -10,43 +10,60 @@ import { formatCurrency, formatDate, getStatusColor } from '../../utils/seller/f
 import Header from "../../components/customer/Header";
 import Footer from "../../components/customer/Footer";
 import toast from 'react-hot-toast';
-import { listProductOfferings, deleteProductOffering, getProductOfferingPrice } from '../../services/seller/productService';
+import { listProductOfferings, deleteProductOffering, getProductOfferingPrice, listCategories } from '../../services/seller/productService';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [priceMap, setPriceMap] = useState({});
 
-  const categories = ['All', 'Electronics', 'Accessories', 'Clothing', 'Home & Garden'];
+  const [categories, setCategories] = useState([]);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || selectedCategory === 'All' || product.category === selectedCategory;
+    const matchesCategory = !selectedCategoryId || product.categoryId === selectedCategoryId;
     return matchesSearch && matchesCategory;
   });
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await listCategories({ limit: 200 });
+        setCategories(res?.data || []);
+      } catch (error) {
+        toast.error('Failed to load categories');
+      }
+    };
+    loadCategories();
+  }, []);
 
   useEffect(() => {
     const load = async () => {
       setInitialLoading(true);
       try {
-        const res = await listProductOfferings({ limit: 100 });
+        const params = { limit: 100 };
+        if (selectedCategoryId) {
+          params.categoryId = selectedCategoryId;
+        }
+        const res = await listProductOfferings(params);
         const offerings = (res?.data || []).map(off => {
-          // Handle both old and new category formats
           let categoryName = 'Uncategorized';
+          let categoryId = '';
           if (Array.isArray(off.category) && off.category.length > 0) {
-            // Handle both {name: 'Category'} and string formats
             const firstCategory = off.category[0];
-            categoryName = typeof firstCategory === 'string' 
-              ? firstCategory 
-              : (firstCategory.name || '');
+            if (typeof firstCategory === 'string') {
+              categoryName = firstCategory;
+            } else {
+              categoryName = firstCategory?.name || 'Uncategorized';
+              categoryId = firstCategory?.id || '';
+            }
           }
-          
-          // Handle both attachment and images arrays for backward compatibility
+
           let imageUrl = '';
           if (Array.isArray(off.attachment) && off.attachment.length > 0) {
             imageUrl = off.attachment[0].url || off.attachment[0].href || '';
@@ -58,6 +75,7 @@ const Products = () => {
             id: off.id,
             name: off.name,
             category: categoryName,
+            categoryId,
             images: imageUrl ? [imageUrl] : [],
             status: (off.lifecycleStatus || 'Active').toLowerCase(),
             createdAt: off.createdAt,
@@ -66,7 +84,6 @@ const Products = () => {
         });
         setProducts(offerings);
 
-        // Preload prices for first price reference per offering
         const uniquePriceIds = Array.from(new Set(offerings
           .map(o => (o.priceRefs?.[0]?.id))
           .filter(Boolean)));
@@ -86,7 +103,7 @@ const Products = () => {
       }
     };
     load();
-  }, []);
+  }, [selectedCategoryId]);
 
   const handleDeleteProduct = async (id) => {
     setLoading(true);
@@ -152,8 +169,9 @@ const Products = () => {
               <input type="text" placeholder="Search products..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
             </div>
           </div>
-          <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            {categories.map((category) => (<option key={category} value={category === 'All' ? '' : category}>{category}</option>))}
+          <select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="">All categories</option>
+            {(categories || []).map((category) => (<option key={category.id} value={category.id}>{category.name}</option>))}
           </select>
         </div>
       </Card>
