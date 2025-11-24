@@ -2,8 +2,7 @@ import axios from "axios";
 
 // Use environment variable or fallback to hardcoded URL
 const PRODUCTION_BASE_URL = import.meta.env.VITE_BASE_URL 
-  ? `${import.meta.env.VITE_BASE_URL}/tmf-api/`
-  : "https://markethub-api-gateway.onrender.com/tmf-api/";
+  || "https://markethub-api-gateway.onrender.com/tmf-api/";
 
 // Create axios instance with production URL
 export const axiosInstance = axios.create({
