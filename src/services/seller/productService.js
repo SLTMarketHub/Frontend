@@ -11,17 +11,19 @@ const generateId = (prefix) => `${prefix}-${Date.now()}`;
 
 export async function listProductOfferings({ offset = 0, limit = 50, name = '', categoryId = '' } = {}) {
   let url = OFFERING_PATH;
-  const params = { offset, limit, fields: 'id,name,description,lifecycleStatus,createdAt,productOfferingPrice,category,attachment' };
-
-  if (name) params.name = name;
+  let params = {};
 
   // When no category is selected, use /all endpoint to fetch all products
   if (!categoryId) {
     url = `${TMF620_BASE}/productOffering/all`;
-  } else if (categoryId) {
-    // When categoryId is provided, filter by that category
+    // Don't add any params for /all endpoint
+  } else {
+    // When categoryId is provided, use regular endpoint with filters
+    params = { offset, limit, fields: 'id,name,description,lifecycleStatus,createdAt,productOfferingPrice,category,attachment' };
     params['category.id'] = categoryId;
   }
+
+  if (name) params.name = name;
 
   const { data } = await api.get(url, { params });
   return data; // { data: [...], pagination: {...} }
