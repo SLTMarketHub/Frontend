@@ -170,7 +170,7 @@ const Products = () => {
             </div>
           </div>
           <select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="all">All categories</option>
+            <option value="">All categories</option>
             {(categories || []).map((category) => (<option key={category.id} value={category.id}>{category.name}</option>))}
           </select>
         </div>
