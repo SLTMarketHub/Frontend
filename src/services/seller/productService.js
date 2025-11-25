@@ -16,7 +16,7 @@ export async function listProductOfferings({ offset = 0, limit = 50, name = '', 
   if (name) params.name = name;
 
   // Special case: when no category is selected → use /all endpoint
-  if (!categoryId || categoryId === 'all') {
+  if (categoryId === 'all') {
     url = `${TMF620_BASE}/productOffering/all`;
   } else if (categoryId) {
     params['category.id'] = categoryId;

@@ -169,8 +169,8 @@ const Products = () => {
               <input type="text" placeholder="Search products..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
             </div>
           </div>
-          <select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value || '')} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="">All categories</option>
+          <select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="all">All categories</option>
             {(categories || []).map((category) => (<option key={category.id} value={category.id}>{category.name}</option>))}
           </select>
         </div>
