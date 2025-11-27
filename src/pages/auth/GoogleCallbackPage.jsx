@@ -44,14 +44,7 @@ const GoogleCallback = () => {
         })
       );
 
-      // Redirect based on role
-      if (userRole === "partner") {
-        navigate("/dashboard");
-      } else if (userRole === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/home");
-      }
+      navigate("/home");
     }
   }, [setAuthUser, navigate]);
 
