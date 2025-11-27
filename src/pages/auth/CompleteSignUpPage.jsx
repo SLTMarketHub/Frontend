@@ -108,9 +108,9 @@ const CompleteSignupPage = () => {
                     JSON.stringify(data.user || { username, email, role:initialRole })
                 );
 
-                if(initialRole === "Customer"){
+                if(initialRole.toLowerCase() === "customer"){
                     navigate("/login");
-                } else if (initialRole === "Partner" || "Admin") {
+                } else if (initialRole.toLowerCase() === "partner" ||  initialRole.toLowerCase() === "admin") {
                     navigate("/loginSellers");
                 }
 
