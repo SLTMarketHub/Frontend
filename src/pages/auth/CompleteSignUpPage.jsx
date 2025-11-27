@@ -108,11 +108,13 @@ const CompleteSignupPage = () => {
                     JSON.stringify(data.user || { username, email, role:initialRole })
                 );
 
-                if(initialRole.toLowerCase() === "customer"){
+                if (initialRole.toLowerCase() === "customer") {
                     navigate("/login");
-                } else if (initialRole.toLowerCase() === "partner" ||  initialRole.toLowerCase() === "admin") {
+                }
+                else if (["partner", "admin"].includes(initialRole.toLowerCase())) {
                     navigate("/loginSellers");
                 }
+
 
             } else {
                 setMessage(data.message || "Signup failed");

@@ -47,10 +47,10 @@ const GoogleCallback = () => {
       // Redirect based on role
       if (userRole === "partner") {
         navigate("/dashboard");
-      } else if (userRole === "customer") {
+      } else if (userRole === "admin") {
+        navigate("/admin/dashboard");
+      } else {
         navigate("/home");
-      } else if (userRole === "admin"){
-        navigate("/admin/dashboard")
       }
     }
   }, [setAuthUser, navigate]);
