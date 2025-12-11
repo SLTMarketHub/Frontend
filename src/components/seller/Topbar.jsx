@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Bell, User, Settings, LogOut, Menu, ChevronDown, ChevronUp, Package, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 
 const Topbar = ({ toggleSidebar }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [user, setUser] = useState(null);
-  const [userDetails, setUserDetails] = useState(null);
-  const { authUser, isAuthenticated } = useAuth();
   const [notifications] = useState([
     { id: 1, message: 'Low stock alert: Product ABC', type: 'warning' },
     { id: 2, message: '5 new orders received', type: 'info' },
@@ -15,31 +12,20 @@ const Topbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (storedUser && storedUser.id) {
-        setUserDetails(storedUser);
-        setUser({
-          ...storedUser,
-          // Format the member since date
-          memberSince: storedUser.createdAt 
-            ? new Date(storedUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
-            : 'N/A'
-        });
-      } else if (authUser && authUser.id) {
-        setUser({
-          ...authUser,
-          // Format the member since date
-          memberSince: authUser.createdAt 
-            ? new Date(authUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
-            : 'N/A'
-        });
-      }
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    if (storedUser && storedUser.id) {
+      setUser({
+        ...storedUser,
+        // Format the member since date
+        memberSince: storedUser.createdAt 
+          ? new Date(storedUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+          : 'N/A'
+      });
     }
-  }, [isAuthenticated, authUser]);
+  }, []);
 
   const getFirstName = (fullName) => {
-    // if (!fullName) return 'User';
+    if (!fullName) return 'User';
     return fullName.trim().split(' ')[0];
   };
 
@@ -63,6 +49,8 @@ const Topbar = ({ toggleSidebar }) => {
     navigate('/seller/orders');
     setShowUserMenu(false);
   };
+
+  // Removed duplicate useEffect and handleLogout function
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
@@ -120,26 +108,10 @@ const Topbar = ({ toggleSidebar }) => {
               </div>
               <div className="hidden md:block text-left">
                 <p className="text-sm font-medium text-gray-900">
-                  {/* Hi, {getFirstName(
-                    userDetails?.username ||
-                    authUser?.name ||
-                    authUser?.username ||
-                    userDetails?.name ||
-                    user?.name ||
-                    user?.firstName ||
-                    // 'User'
-                  )} */}
-                   <span>
-                  Hi,{" "}
-                  {getFirstName(
-                    userDetails?.username ||
-                      authUser?.name ||
-                      authUser?.username
-                  )}
-                </span>
+                  {getFirstName(user?.name || 'User')}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {userDetails?.email || authUser?.email || user?.email || 'Seller'}
+                  {user?.email || 'Seller'}
                 </p>
               </div>
               {showUserMenu ? <ChevronUp size={16} className="text-gray-700" /> : <ChevronDown size={16} className="text-gray-700" />}
@@ -163,10 +135,10 @@ const Topbar = ({ toggleSidebar }) => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      {user?.name || userDetails?.name || authUser?.name || 'Seller'}
+                      {user?.name || 'Seller'}
                     </p>
                     <p className="text-xs text-gray-500 truncate">
-                      {user?.email || userDetails?.email || authUser?.email || 'seller@example.com'}
+                      {user?.email || 'seller@example.com'}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                       Member since {user?.memberSince || 'N/A'}
